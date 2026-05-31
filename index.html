@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>まほうの計算学校 ✨</title>
+  <title>まほうのお店屋さん ✨</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
@@ -16,8 +16,8 @@
 <section id="screen-title" class="screen">
   <div class="screen-inner">
     <div class="title-hero">
-      <div class="title-logo">✨ まほうの計算学校 ✨</div>
-      <div class="title-sub">～ たのしく計算して、グッズをゲットしよう！ ～</div>
+      <div class="title-logo">🏪 まほうのお店屋さん ✨</div>
+      <div class="title-sub">～ 計算でコインを稼いで、お店の商品を仕入れよう！ ～</div>
       <div class="title-chars">
         <svg width="60" height="75" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
           <circle cx="40" cy="28" r="20" fill="#FDDBB4"/>
@@ -77,7 +77,7 @@
   <div class="screen-inner">
     <div class="page-header mt-16">
       <button class="btn btn-outline btn-sm" onclick="initTitle()">← もどる</button>
-      <h1>あたらしくはじめる</h1>
+      <h1>🏪 お店をひらく</h1>
     </div>
     <input type="hidden" id="new-game-slot" value="0">
     <div class="new-game-card">
@@ -113,7 +113,7 @@
         <div class="menu-name" id="menu-name"></div>
         <div class="menu-sub"><span id="menu-grade"></span> ・ 正解 <span id="menu-correct"></span>もん</div>
         <div class="menu-points" id="menu-points">0</div>
-        <div class="menu-points-label">💰 まほうポイント</div>
+        <div class="menu-points-label">🪙 まほうコイン</div>
       </div>
     </div>
 
@@ -129,11 +129,11 @@
       </button>
       <button class="menu-btn accent" onclick="openShop()">
         <span class="icon">🛍️</span>
-        ショップ
+        仕入れショップ
       </button>
       <button class="menu-btn mint" onclick="openCollection()">
-        <span class="icon">💎</span>
-        コレクション
+        <span class="icon">🏪</span>
+        お店の商品
       </button>
       <button class="menu-btn yellow" onclick="openReport()">
         <span class="icon">📊</span>
@@ -181,17 +181,17 @@
 <section id="screen-result" class="screen">
   <div class="screen-inner">
     <div class="result-card">
-      <div class="result-title">🎉 けっか発表！</div>
+      <div class="result-title">🎉 チャレンジ結果！</div>
       <div class="result-score">
         <span id="result-correct">0</span> / <span id="result-total">5</span> <span>もん正解</span>
       </div>
-      <div class="result-pts">+ <span id="result-points">0</span> pt ゲット！</div>
-      <div class="result-total-pts">トータル: <span id="result-total-points">0</span> pt</div>
+      <div class="result-pts">+ <span id="result-points">0</span> 🪙 ゲット！</div>
+      <div class="result-total-pts">合計コイン: <span id="result-total-points">0</span> 🪙</div>
       <div class="result-combo" id="result-combo"></div>
       <div class="result-stamp" id="result-stamp"></div>
       <div class="result-actions">
         <button class="btn btn-primary" onclick="startQuiz(false)">もう一度！</button>
-        <button class="btn btn-accent" onclick="openShop()">ショップへ</button>
+        <button class="btn btn-accent" onclick="openShop()">仕入れへ</button>
         <button class="btn btn-outline" onclick="renderMainMenu(); showScreen('main-menu')">メニューへ</button>
       </div>
     </div>
@@ -203,7 +203,7 @@
   <div class="screen-inner">
     <div class="page-header mt-16">
       <button class="btn btn-outline btn-sm" onclick="renderMainMenu(); showScreen('main-menu')">← もどる</button>
-      <h1>🛍️ まほうショップ</h1>
+      <h1>🛍️ 仕入れショップ</h1>
       <span class="shop-points-header" id="shop-points-header">💰 0pt</span>
     </div>
     <div class="scroll-content" id="shop-content"></div>
@@ -215,7 +215,7 @@
   <div class="screen-inner">
     <div class="page-header mt-16">
       <button class="btn btn-outline btn-sm" onclick="renderMainMenu(); showScreen('main-menu')">← もどる</button>
-      <h1>💎 コレクション</h1>
+      <h1>🏪 お店の商品一覧</h1>
     </div>
     <div class="scroll-content" id="collection-content"></div>
   </div>

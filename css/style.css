@@ -207,7 +207,8 @@ body { overflow-x: hidden; }
 .shop-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; width: 100%; max-width: 520px; }
 .shop-title { font-size: 1.3rem; font-weight: 900; color: var(--pink); }
 .shop-points-header { font-size: 0.95rem; font-weight: 700; color: var(--text); }
-.shop-points { font-size: 1rem; font-weight: 700; padding: 8px 14px; background: var(--lav-l); border-radius: 12px; margin-bottom: 16px; color: var(--text); }
+.shop-points { font-size: 1rem; font-weight: 700; padding: 8px 14px; background: var(--lav-l); border-radius: 12px; margin-bottom: 6px; color: var(--text); }
+.shop-desc { font-size: 0.8rem; color: var(--text-l); margin-bottom: 16px; }
 .shop-category { margin-bottom: 24px; }
 .shop-category h3 { font-size: 1rem; font-weight: 700; margin-bottom: 10px; color: var(--text-l); }
 .shop-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }

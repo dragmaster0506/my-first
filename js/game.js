@@ -11,7 +11,7 @@ let state = {
 };
 
 const POINTS_PER_CORRECT = 10;
-const COMBO_BONUS = [0, 0, 5, 10, 15, 20];
+const COMBO_BONUS = [0, 0, 2, 4, 6, 8];
 
 function $(id) { return document.getElementById(id); }
 
@@ -87,7 +87,7 @@ function renderSaveSlots() {
         <div class="slot-avatar">${getCharSVG(save.grade)}</div>
         <div class="slot-info">
           <div class="slot-name">${escHtml(save.name)}</div>
-          <div class="slot-detail">${save.grade}ねんせい ⭐ ${save.points}pt 正解率 ${pct}%</div>
+          <div class="slot-detail">${save.grade}ねんせい 🪙 ${save.points}コイン 正解率 ${pct}%</div>
         </div>
         <div class="slot-actions">
           <button class="btn btn-primary" onclick="startGame(${i})">つづきから</button>
@@ -216,7 +216,7 @@ function submitAnswer() {
     const pts = Math.round((POINTS_PER_CORRECT + bonus) * hintPenalty);
     state.sessionPoints += pts;
 
-    $('quiz-feedback').textContent = `⭕ せいかい！ +${pts}pt${bonus > 0 ? ` (コンボボーナス +${bonus})` : ''}`;
+    $('quiz-feedback').textContent = `⭕ せいかい！ +${pts}🪙${bonus > 0 ? ` (コンボボーナス +${bonus})` : ''}`;
     $('quiz-feedback').className = 'quiz-feedback correct';
     playSound('correct');
     spawnParticles();
@@ -296,13 +296,13 @@ function awardRandomRareItem() {
   if (rareItems.length === 0) return;
   const item = rareItems[Math.floor(Math.random() * rareItems.length)];
   state.save = updateSave(state.slot, { inventory: [...state.save.inventory, item.id] });
-  showToast(`🎁 スタンプ達成！「${item.name}」をゲット！`);
+  showToast(`🎁 スタンプ達成！「${item.name}」を仕入れた！`);
 }
 
 // ── Shop ───────────────────────────────────────────────────────────────────
 function openShop() {
   showScreen('shop');
-  $('shop-points-header').textContent = `💰 ${state.save.points}pt`;
+  $('shop-points-header').textContent = `🪙 ${state.save.points}コイン`;
   $('shop-content').innerHTML = renderShop(state.save);
   window._shopBuyCallback = buyItem;
 }
@@ -311,17 +311,17 @@ function buyItem(itemId) {
   const item = getItemById(itemId);
   if (!item || state.save.inventory.includes(item.id)) return;
   if (state.save.points < item.cost) {
-    showToast('ポイントがたりないよ！');
+    showToast('まほうコインがたりないよ！もっと計算チャレンジしよう！');
     return;
   }
   const newPoints = state.save.points - item.cost;
   const newInv = [...state.save.inventory, item.id];
   state.save = updateSave(state.slot, { points: newPoints, inventory: newInv });
   playSound('buy');
-  showToast(`💖 「${item.name}」をゲット！`);
+  showToast(`🎁 「${item.name}」を仕入れた！`);
   $('shop-content').innerHTML = renderShop(state.save);
   window._shopBuyCallback = buyItem;
-  $('shop-points-header').textContent = `💰 ${state.save.points}pt`;
+  $('shop-points-header').textContent = `🪙 ${state.save.points}コイン`;
 }
 
 // ── Collection ─────────────────────────────────────────────────────────────
@@ -332,10 +332,10 @@ function openCollection() {
 
 function renderCollection() {
   const categories = [
-    { id: 'coord',  label: '👗 コーデ' },
-    { id: 'pet',    label: '🐾 ペット' },
-    { id: 'room',   label: '🏠 へや' },
-    { id: 'effect', label: '✨ エフェクト' },
+    { id: 'coord',  label: '👗 コーデ商品' },
+    { id: 'pet',    label: '🐾 ペット商品' },
+    { id: 'room',   label: '🏠 インテリア商品' },
+    { id: 'effect', label: '✨ エフェクト商品' },
     { id: 'badge',  label: '🏅 バッジ' }
   ];
   let html = '';
@@ -350,7 +350,7 @@ function renderCollection() {
              onclick="${owned ? `equipItem('${item.id}','${item.category}')` : ''}">
           <div class="item-emoji" style="background:${owned ? item.color + '30' : '#eee'};border-color:${owned ? item.color : '#ccc'}">${owned ? item.emoji : '🔒'}</div>
           <div class="item-name">${owned ? item.name : '???'}</div>
-          ${equipped ? '<div class="equipped-label">装備中</div>' : ''}
+          ${equipped ? '<div class="equipped-label">飾り中</div>' : ''}
         </div>`;
     });
     html += `</div></div>`;
@@ -365,7 +365,7 @@ function equipItem(itemId, category) {
   equipped[key] = equipped[key] === itemId ? null : itemId;
   state.save = updateSave(state.slot, { equipped });
   renderCollection();
-  showToast(equipped[key] ? `${getItemById(itemId)?.name} を装備！` : '装備をはずした');
+  showToast(equipped[key] ? `${getItemById(itemId)?.name} をお店に飾った！` : 'お店から外した');
 }
 
 // ── Report ─────────────────────────────────────────────────────────────────
@@ -377,13 +377,13 @@ function openReport() {
     <div class="report-card">
       <div class="report-row"><span>なまえ</span><b>${escHtml(s.name)}</b></div>
       <div class="report-row"><span>学年</span><b>${s.grade}ねんせい</b></div>
-      <div class="report-row"><span>もっているポイント</span><b>${s.points} pt</b></div>
+      <div class="report-row"><span>もっているコイン</span><b>${s.points} 🪙</b></div>
       <div class="report-row"><span>とういた問題数</span><b>${s.totalQuestions} もん</b></div>
       <div class="report-row"><span>正解数</span><b>${s.totalCorrect} もん</b></div>
       <div class="report-row"><span>正解率</span><b>${pct} %</b></div>
       <div class="report-row"><span>最高コンボ</span><b>${s.maxCombo || 0} 🔥</b></div>
       <div class="report-row"><span>スタンプ</span><b>${'★'.repeat(s.stamps)}${'☆'.repeat(10 - s.stamps)}</b></div>
-      <div class="report-row"><span>コレクション数</span><b>${s.inventory.length} / ${allItems.length}</b></div>
+      <div class="report-row"><span>仕入れた商品数</span><b>${s.inventory.length} / ${allItems.length}</b></div>
     </div>
     <div class="report-bar-wrap">
       <div class="report-bar-label">正解率</div>
