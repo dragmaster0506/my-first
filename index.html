@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>まほうの計算学校 ✨</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="particles"></div>
+
+<!-- ── TITLE ──────────────────────────────────────────────────── -->
+<section id="screen-title" class="screen">
+  <div class="screen-inner">
+    <div class="title-hero">
+      <div class="title-logo">✨ まほうの計算学校 ✨</div>
+      <div class="title-sub">～ たのしく計算して、グッズをゲットしよう！ ～</div>
+      <div class="title-chars">
+        <svg width="60" height="75" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="28" r="20" fill="#FDDBB4"/>
+          <rect x="22" y="48" width="36" height="38" rx="8" fill="#FFB7C5"/>
+          <rect x="10" y="50" width="14" height="28" rx="6" fill="#FFB7C5"/>
+          <rect x="56" y="50" width="14" height="28" rx="6" fill="#FFB7C5"/>
+          <rect x="26" y="86" width="12" height="14" rx="4" fill="#8B6F6F"/>
+          <rect x="42" y="86" width="12" height="14" rx="4" fill="#8B6F6F"/>
+          <ellipse cx="40" cy="12" rx="22" ry="14" fill="#8B4513"/>
+          <circle cx="33" cy="27" r="2.5" fill="#3D2B1F"/>
+          <circle cx="47" cy="27" r="2.5" fill="#3D2B1F"/>
+          <path d="M35 34 Q40 38 45 34" stroke="#C0837A" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <circle cx="34" cy="26" r="1" fill="white"/>
+          <circle cx="48" cy="26" r="1" fill="white"/>
+          <text x="58" y="20" font-size="16">✨</text>
+        </svg>
+        <svg width="60" height="75" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="28" r="20" fill="#FDDBB4"/>
+          <rect x="22" y="48" width="36" height="38" rx="8" fill="#C9B7FF"/>
+          <rect x="10" y="50" width="14" height="28" rx="6" fill="#C9B7FF"/>
+          <rect x="56" y="50" width="14" height="28" rx="6" fill="#C9B7FF"/>
+          <rect x="26" y="86" width="12" height="14" rx="4" fill="#8B6F6F"/>
+          <rect x="42" y="86" width="12" height="14" rx="4" fill="#8B6F6F"/>
+          <ellipse cx="40" cy="12" rx="22" ry="14" fill="#FFD700"/>
+          <circle cx="33" cy="27" r="2.5" fill="#3D2B1F"/>
+          <circle cx="47" cy="27" r="2.5" fill="#3D2B1F"/>
+          <path d="M35 34 Q40 38 45 34" stroke="#C0837A" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <circle cx="34" cy="26" r="1" fill="white"/>
+          <circle cx="48" cy="26" r="1" fill="white"/>
+          <text x="2" y="20" font-size="16">🌟</text>
+        </svg>
+        <svg width="60" height="75" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="28" r="20" fill="#FDDBB4"/>
+          <rect x="22" y="48" width="36" height="38" rx="8" fill="#B7EFC5"/>
+          <rect x="10" y="50" width="14" height="28" rx="6" fill="#B7EFC5"/>
+          <rect x="56" y="50" width="14" height="28" rx="6" fill="#B7EFC5"/>
+          <rect x="26" y="86" width="12" height="14" rx="4" fill="#8B6F6F"/>
+          <rect x="42" y="86" width="12" height="14" rx="4" fill="#8B6F6F"/>
+          <ellipse cx="40" cy="12" rx="22" ry="14" fill="#C0392B"/>
+          <circle cx="33" cy="27" r="2.5" fill="#3D2B1F"/>
+          <circle cx="47" cy="27" r="2.5" fill="#3D2B1F"/>
+          <path d="M35 34 Q40 38 45 34" stroke="#C0837A" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <circle cx="34" cy="26" r="1" fill="white"/>
+          <circle cx="48" cy="26" r="1" fill="white"/>
+          <text x="58" y="20" font-size="16">💫</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="save-slots-title">セーブデータを選んでね</div>
+    <div id="save-slots"></div>
+  </div>
+</section>
+
+<!-- ── NEW GAME ────────────────────────────────────────────────── -->
+<section id="screen-new-game" class="screen">
+  <div class="screen-inner">
+    <div class="page-header mt-16">
+      <button class="btn btn-outline btn-sm" onclick="initTitle()">← もどる</button>
+      <h1>あたらしくはじめる</h1>
+    </div>
+    <input type="hidden" id="new-game-slot" value="0">
+    <div class="new-game-card">
+      <h2>✨ プロフィール設定 ✨</h2>
+      <div class="form-group">
+        <label>なまえ（ひらがな・カタカナ・漢字）</label>
+        <input type="text" id="new-name" maxlength="10" placeholder="なまえをいれてね" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>学年</label>
+        <div class="grade-grid">
+          <button class="grade-btn active" onclick="selectGrade(1,this)">1ねんせい</button>
+          <button class="grade-btn" onclick="selectGrade(2,this)">2ねんせい</button>
+          <button class="grade-btn" onclick="selectGrade(3,this)">3ねんせい</button>
+          <button class="grade-btn" onclick="selectGrade(4,this)">4ねんせい</button>
+          <button class="grade-btn" onclick="selectGrade(5,this)">5ねんせい</button>
+          <button class="grade-btn" onclick="selectGrade(6,this)">6ねんせい</button>
+        </div>
+        <input type="hidden" id="new-grade" value="1">
+      </div>
+      <button class="btn btn-primary btn-full mt-16" onclick="createGame()">ゲームスタート！ →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ── MAIN MENU ───────────────────────────────────────────────── -->
+<section id="screen-main-menu" class="screen">
+  <div class="screen-inner">
+    <!-- Profile Card -->
+    <div class="menu-profile mt-16">
+      <div class="menu-char-wrap" id="menu-char"></div>
+      <div class="menu-info">
+        <div class="menu-name" id="menu-name"></div>
+        <div class="menu-sub"><span id="menu-grade"></span> ・ 正解 <span id="menu-correct"></span>もん</div>
+        <div class="menu-points" id="menu-points">0</div>
+        <div class="menu-points-label">💰 まほうポイント</div>
+      </div>
+    </div>
+
+    <!-- Action Grid -->
+    <div class="menu-grid">
+      <button class="menu-btn primary" onclick="startQuiz(false)">
+        <span class="icon">📝</span>
+        チャレンジ！<br><small>5もん</small>
+      </button>
+      <button class="menu-btn daily" id="btn-daily" onclick="startQuiz(true)">
+        <span class="icon">⭐</span>
+        デイリー<br><small>10もん</small>
+      </button>
+      <button class="menu-btn accent" onclick="openShop()">
+        <span class="icon">🛍️</span>
+        ショップ
+      </button>
+      <button class="menu-btn mint" onclick="openCollection()">
+        <span class="icon">💎</span>
+        コレクション
+      </button>
+      <button class="menu-btn yellow" onclick="openReport()">
+        <span class="icon">📊</span>
+        せいせき
+      </button>
+      <button class="menu-btn" onclick="changeGradeScreen()">
+        <span class="icon">🎓</span>
+        学年変更
+      </button>
+    </div>
+    <button class="btn btn-outline btn-full mt-8" onclick="initTitle()">← タイトルにもどる</button>
+  </div>
+</section>
+
+<!-- ── QUIZ ────────────────────────────────────────────────────── -->
+<section id="screen-quiz" class="screen">
+  <div class="quiz-header">
+    <div class="quiz-top">
+      <span class="quiz-progress-text" id="quiz-progress">1 / 5もん</span>
+      <span class="quiz-combo" id="quiz-combo"></span>
+    </div>
+    <div class="progress-bar-bg">
+      <div class="progress-bar-fill" id="quiz-progress-bar" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="quiz-card">
+    <div class="quiz-question" id="quiz-question"></div>
+    <div class="quiz-input-row">
+      <input type="text" id="quiz-answer" inputmode="decimal" placeholder="こたえをいれてね"
+             onkeydown="if(event.key==='Enter') submitAnswer()">
+      <button class="btn btn-primary" onclick="submitAnswer()">→</button>
+    </div>
+    <div class="quiz-hint" id="quiz-hint"></div>
+    <div class="quiz-feedback" id="quiz-feedback"></div>
+    <div class="quiz-actions">
+      <button class="btn btn-outline btn-sm" id="btn-hint" onclick="showHint()">💡 ヒント</button>
+    </div>
+  </div>
+
+  <button class="btn btn-outline btn-sm mt-16" onclick="renderMainMenu(); showScreen('main-menu')">やめる</button>
+</section>
+
+<!-- ── RESULT ──────────────────────────────────────────────────── -->
+<section id="screen-result" class="screen">
+  <div class="screen-inner">
+    <div class="result-card">
+      <div class="result-title">🎉 けっか発表！</div>
+      <div class="result-score">
+        <span id="result-correct">0</span> / <span id="result-total">5</span> <span>もん正解</span>
+      </div>
+      <div class="result-pts">+ <span id="result-points">0</span> pt ゲット！</div>
+      <div class="result-total-pts">トータル: <span id="result-total-points">0</span> pt</div>
+      <div class="result-combo" id="result-combo"></div>
+      <div class="result-stamp" id="result-stamp"></div>
+      <div class="result-actions">
+        <button class="btn btn-primary" onclick="startQuiz(false)">もう一度！</button>
+        <button class="btn btn-accent" onclick="openShop()">ショップへ</button>
+        <button class="btn btn-outline" onclick="renderMainMenu(); showScreen('main-menu')">メニューへ</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SHOP ────────────────────────────────────────────────────── -->
+<section id="screen-shop" class="screen">
+  <div class="screen-inner">
+    <div class="page-header mt-16">
+      <button class="btn btn-outline btn-sm" onclick="renderMainMenu(); showScreen('main-menu')">← もどる</button>
+      <h1>🛍️ まほうショップ</h1>
+      <span class="shop-points-header" id="shop-points-header">💰 0pt</span>
+    </div>
+    <div class="scroll-content" id="shop-content"></div>
+  </div>
+</section>
+
+<!-- ── COLLECTION ─────────────────────────────────────────────── -->
+<section id="screen-collection" class="screen">
+  <div class="screen-inner">
+    <div class="page-header mt-16">
+      <button class="btn btn-outline btn-sm" onclick="renderMainMenu(); showScreen('main-menu')">← もどる</button>
+      <h1>💎 コレクション</h1>
+    </div>
+    <div class="scroll-content" id="collection-content"></div>
+  </div>
+</section>
+
+<!-- ── REPORT ──────────────────────────────────────────────────── -->
+<section id="screen-report" class="screen">
+  <div class="screen-inner">
+    <div class="page-header mt-16">
+      <button class="btn btn-outline btn-sm" onclick="renderMainMenu(); showScreen('main-menu')">← もどる</button>
+      <h1>📊 せいせきレポート</h1>
+    </div>
+    <div id="report-content"></div>
+  </div>
+</section>
+
+<!-- ── GRADE CHANGE ────────────────────────────────────────────── -->
+<section id="screen-grade" class="screen">
+  <div class="screen-inner">
+    <div class="page-header mt-16">
+      <button class="btn btn-outline btn-sm" onclick="renderMainMenu(); showScreen('main-menu')">← もどる</button>
+      <h1>🎓 学年を変える</h1>
+    </div>
+    <div class="new-game-card">
+      <p style="font-size:0.9rem;color:var(--text-l);margin-bottom:16px;">学年を変えると問題のレベルが変わるよ！</p>
+      <div class="grade-grid" id="grade-change-grid">
+        <button class="grade-btn" onclick="changeGrade(1,this)">1ねんせい</button>
+        <button class="grade-btn" onclick="changeGrade(2,this)">2ねんせい</button>
+        <button class="grade-btn" onclick="changeGrade(3,this)">3ねんせい</button>
+        <button class="grade-btn" onclick="changeGrade(4,this)">4ねんせい</button>
+        <button class="grade-btn" onclick="changeGrade(5,this)">5ねんせい</button>
+        <button class="grade-btn" onclick="changeGrade(6,this)">6ねんせい</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="js/save.js"></script>
+<script src="js/questions.js"></script>
+<script src="js/shop.js"></script>
+<script src="js/game.js"></script>
+<script>
+function selectGrade(g, btn) {
+  document.querySelectorAll('.grade-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('new-grade').value = g;
+}
+
+function changeGradeScreen() {
+  showScreen('grade');
+  const g = state.save.grade;
+  document.querySelectorAll('#grade-change-grid .grade-btn').forEach((b, i) => {
+    b.classList.toggle('active', i + 1 === g);
+  });
+}
+
+function changeGrade(g, btn) {
+  document.querySelectorAll('#grade-change-grid .grade-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.save = updateSave(state.slot, { grade: g });
+  showToast(`${g}ねんせいに変更したよ！`);
+  setTimeout(() => { renderMainMenu(); showScreen('main-menu'); }, 800);
+}
+
+// Update shop points header when shop is opened
+const _origOpenShop = openShop;
+</script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+{
+  "grade": 1,
+  "name": "1ねんせい",
+  "topics": [
+    {
+      "id": "add10",
+      "name": "たしざん（10まで）",
+      "type": "add",
+      "range": [1, 9],
+      "maxResult": 10
+    },
+    {
+      "id": "sub10",
+      "name": "ひきざん（10まで）",
+      "type": "sub",
+      "range": [1, 10],
+      "maxResult": 10
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "grade": 6,
+  "name": "6ねんせい",
+  "topics": [
+    {
+      "id": "fraction_mul",
+      "name": "ぶんすうのかけざん",
+      "type": "fraction_mul",
+      "maxDenom": 9
+    },
+    {
+      "id": "ratio",
+      "name": "比（ひ）",
+      "type": "ratio"
+    },
+    {
+      "id": "speed",
+      "name": "はやさ・じかん・きょり",
+      "type": "speed"
+    }
+  ]
+}

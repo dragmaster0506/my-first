@@ -1,0 +1,25 @@
+{
+  "grade": 3,
+  "name": "3ねんせい",
+  "topics": [
+    {
+      "id": "mul99",
+      "name": "かけざん（九九ぜんぶ）",
+      "type": "mul",
+      "tables": [1,2,3,4,5,6,7,8,9]
+    },
+    {
+      "id": "div_intro",
+      "name": "わりざんにゅうもん",
+      "type": "div",
+      "tables": [2, 3, 4, 5]
+    },
+    {
+      "id": "add1000",
+      "name": "大きなたしざん",
+      "type": "add",
+      "range": [100, 999],
+      "maxResult": 1000
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "grade": 5,
+  "name": "5ねんせい",
+  "topics": [
+    {
+      "id": "fraction_diff",
+      "name": "ぶんすうのたしひき（ちがうぶんぼ）",
+      "type": "fraction_diff",
+      "maxDenom": 12
+    },
+    {
+      "id": "decimal_mul",
+      "name": "しょうすうのかけざん",
+      "type": "decimal_mul",
+      "decimals": 1
+    },
+    {
+      "id": "percent",
+      "name": "わりあい（百分率）",
+      "type": "percent"
+    }
+  ]
+}

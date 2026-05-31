@@ -1,0 +1,26 @@
+{
+  "grade": 2,
+  "name": "2ねんせい",
+  "topics": [
+    {
+      "id": "add100",
+      "name": "たしざん（くりあがり）",
+      "type": "add",
+      "range": [10, 99],
+      "maxResult": 100
+    },
+    {
+      "id": "sub100",
+      "name": "ひきざん（くりさがり）",
+      "type": "sub",
+      "range": [10, 99],
+      "maxResult": 99
+    },
+    {
+      "id": "mul_intro",
+      "name": "かけざんにゅうもん（2・3・4・5のだん）",
+      "type": "mul",
+      "tables": [2, 3, 4, 5]
+    }
+  ]
+}
