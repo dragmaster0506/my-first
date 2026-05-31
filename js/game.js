@@ -299,6 +299,59 @@ function awardRandomRareItem() {
   showToast(`🎁 スタンプ達成！「${item.name}」を仕入れた！`);
 }
 
+// ── Shop Floor ─────────────────────────────────────────────────────────────
+function openShopFloor() {
+  showScreen('shopfloor');
+  $('shopfloor-coins').textContent = state.save.points;
+  $('shopfloor-content').innerHTML = renderShopFloor(state.save);
+}
+
+function showItemDetail(itemId) {
+  const item = getItemById(itemId);
+  if (!item) return;
+  const owned = state.save.inventory.includes(item.id);
+  const canBuy = !owned && state.save.points >= item.cost && item.cost > 0;
+  const isFree = item.cost === 0;
+  const rarityText = { normal: '', rare: '✦ レアアイテム', super: '★ スーパーレアアイテム' };
+  const rarityColor = { normal: '#6B7280', rare: '#7C3AED', super: '#D97706' };
+
+  $('modal-svg').innerHTML = getItemSVG(item.id);
+  $('modal-name').textContent = item.name;
+  $('modal-rarity').textContent = rarityText[item.rarity];
+  $('modal-rarity').style.color = rarityColor[item.rarity];
+  $('modal-detail').textContent = item.detail;
+
+  if (isFree) {
+    $('modal-price').innerHTML = `<span class="modal-price-free">チャレンジで獲得</span>`;
+    $('modal-action').innerHTML = owned
+      ? `<div class="modal-owned">✓ すでにもっているよ！</div>`
+      : `<div class="modal-owned grey">がんばってチャレンジをクリアしよう！</div>`;
+  } else if (owned) {
+    $('modal-price').innerHTML = `<span class="modal-price-owned">仕入れ済み</span>`;
+    $('modal-action').innerHTML = `<div class="modal-owned">✓ お店にある商品だよ！</div>`;
+  } else {
+    $('modal-price').innerHTML = `<span class="modal-price-coin">🪙 ${item.cost} コイン</span>`;
+    $('modal-action').innerHTML = `
+      <button class="btn btn-primary btn-full ${canBuy ? '' : 'disabled'}"
+              onclick="buyItemFromModal('${item.id}')"
+              ${canBuy ? '' : 'disabled'}>
+        ${canBuy ? '🛒 仕入れる！' : `🪙 コインがたりない (あと${item.cost - state.save.points}コイン)`}
+      </button>`;
+  }
+
+  $('item-modal').style.display = 'flex';
+}
+
+function closeItemModal() {
+  $('item-modal').style.display = 'none';
+}
+
+function buyItemFromModal(itemId) {
+  buyItem(itemId);
+  closeItemModal();
+  openShopFloor();
+}
+
 // ── Shop ───────────────────────────────────────────────────────────────────
 function openShop() {
   showScreen('shop');
@@ -347,8 +400,8 @@ function renderCollection() {
       const equipped = Object.values(state.save.equipped || {}).includes(item.id);
       html += `
         <div class="collection-item ${owned ? 'owned' : 'locked'} ${equipped ? 'equipped' : ''}"
-             onclick="${owned ? `equipItem('${item.id}','${item.category}')` : ''}">
-          <div class="item-emoji" style="background:${owned ? item.color + '30' : '#eee'};border-color:${owned ? item.color : '#ccc'}">${owned ? item.emoji : '🔒'}</div>
+             onclick="${owned ? `showItemDetail('${item.id}')` : ''}">
+          <div class="item-svg-col">${owned ? getItemSVG(item.id) : '<svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="26" fill="#E5E7EB"/><text x="18" y="38" font-size="22">🔒</text></svg>'}</div>
           <div class="item-name">${owned ? item.name : '???'}</div>
           ${equipped ? '<div class="equipped-label">飾り中</div>' : ''}
         </div>`;

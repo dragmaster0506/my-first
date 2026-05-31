@@ -127,13 +127,17 @@
         <span class="icon">⭐</span>
         デイリー<br><small>10もん</small>
       </button>
+      <button class="menu-btn primary-b" onclick="openShopFloor()">
+        <span class="icon">🏪</span>
+        お店に行く
+      </button>
       <button class="menu-btn accent" onclick="openShop()">
-        <span class="icon">🛍️</span>
+        <span class="icon">🛒</span>
         仕入れショップ
       </button>
       <button class="menu-btn mint" onclick="openCollection()">
-        <span class="icon">🏪</span>
-        お店の商品
+        <span class="icon">📦</span>
+        仕入れ一覧
       </button>
       <button class="menu-btn yellow" onclick="openReport()">
         <span class="icon">📊</span>
@@ -198,13 +202,38 @@
   </div>
 </section>
 
+<!-- ── SHOP FLOOR ─────────────────────────────────────────────── -->
+<section id="screen-shopfloor" class="screen">
+  <div class="screen-inner">
+    <div class="page-header mt-16">
+      <button class="btn btn-outline btn-sm" onclick="renderMainMenu(); showScreen('main-menu')">← もどる</button>
+      <h1>🏪 お店の中</h1>
+      <span class="shop-coins-badge">🪙 <span id="shopfloor-coins">0</span></span>
+    </div>
+    <div class="scroll-content" id="shopfloor-content"></div>
+  </div>
+</section>
+
+<!-- ── ITEM DETAIL MODAL ─────────────────────────────────────────── -->
+<div id="item-modal" class="modal-overlay" style="display:none" onclick="closeItemModal()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeItemModal()">✕</button>
+    <div class="modal-svg" id="modal-svg"></div>
+    <div class="modal-name" id="modal-name"></div>
+    <div class="modal-rarity" id="modal-rarity"></div>
+    <div class="modal-detail" id="modal-detail"></div>
+    <div class="modal-price" id="modal-price"></div>
+    <div id="modal-action"></div>
+  </div>
+</div>
+
 <!-- ── SHOP ────────────────────────────────────────────────────── -->
 <section id="screen-shop" class="screen">
   <div class="screen-inner">
     <div class="page-header mt-16">
       <button class="btn btn-outline btn-sm" onclick="renderMainMenu(); showScreen('main-menu')">← もどる</button>
-      <h1>🛍️ 仕入れショップ</h1>
-      <span class="shop-points-header" id="shop-points-header">💰 0pt</span>
+      <h1>🛒 仕入れショップ</h1>
+      <span class="shop-points-header" id="shop-points-header">🪙 0</span>
     </div>
     <div class="scroll-content" id="shop-content"></div>
   </div>
@@ -215,7 +244,7 @@
   <div class="screen-inner">
     <div class="page-header mt-16">
       <button class="btn btn-outline btn-sm" onclick="renderMainMenu(); showScreen('main-menu')">← もどる</button>
-      <h1>🏪 お店の商品一覧</h1>
+      <h1>📦 仕入れ一覧</h1>
     </div>
     <div class="scroll-content" id="collection-content"></div>
   </div>
