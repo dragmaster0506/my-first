@@ -1,0 +1,16 @@
+{
+  "name": "gpt-dashboard-functions",
+  "version": "1.0.0",
+  "description": "Cloud Functions proxy for OpenAI and Kintone APIs",
+  "main": "index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "npx @google-cloud/functions-framework --target=api",
+    "dev": "PORT=8080 npx @google-cloud/functions-framework --target=api"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.4.0"
+  }
+}

@@ -456,6 +456,8 @@
             <input id="kintone-subdomain" type="text" placeholder="yourcompany" class="settings-input" style="border-radius:10px 0 0 10px;border-right:none" />
             <span style="padding:9px 12px;border:1.5px solid #e2e8f0;border-left:none;border-radius:0 10px 10px 0;font-size:13px;color:#94a3b8;background:#f8fafc">.cybozu.com</span>
           </div>
+          <label for="kintone-appid" style="display:block;font-size:12px;font-weight:500;color:#64748b;margin-top:12px;margin-bottom:6px">アプリID（カンマ区切りで複数指定可）</label>
+          <input id="kintone-appid" type="text" placeholder="1,2,3" class="settings-input" style="width:100%;border-radius:10px" />
         </div>
 
         <button id="save-settings" style="padding:11px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:14px;font-weight:600;border:none;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,.35);transition:opacity .15s">
@@ -488,6 +490,104 @@
      SCRIPT
 ════════════════════════════════════════════ -->
 <script>
+// ─── API layer ────────────────────────────────────────────────────────────────
+// DATA is the live dataset. Starts as MOCK; overwritten by loadFromAPI() if CF URL is set.
+let DATA;
+
+function cfUrl() { return (localStorage.getItem('cf_url') || '').replace(/\/$/, ''); }
+
+// Map OpenAI usage/costs response → MOCK-shaped objects for chart rendering
+function parseOpenAIUsage(raw) {
+  if (!raw || !raw.data) return null;
+  const daily = [];
+  for (const bucket of raw.data) {
+    const date = new Date(bucket.start_time * 1000);
+    const label = `${String(date.getMonth()+1).padStart(2,'0')}/${String(date.getDate()).padStart(2,'0')}`;
+    let input = 0, output = 0;
+    for (const r of (bucket.results || [])) {
+      input  += r.input_tokens  || 0;
+      output += r.output_tokens || 0;
+    }
+    daily.push({ date: label, input, output });
+  }
+  return daily;
+}
+
+function parseOpenAICosts(raw) {
+  if (!raw || !raw.data) return null;
+  // group by month
+  const byMonth = {};
+  for (const bucket of raw.data) {
+    const date = new Date(bucket.start_time * 1000);
+    const key  = `${date.getFullYear()}/${String(date.getMonth()+1).padStart(2,'0')}`;
+    byMonth[key] = (byMonth[key] || 0) + (bucket.amount?.value || 0);
+  }
+  return Object.entries(byMonth).sort(([a],[b]) => a.localeCompare(b)).map(([month, cost]) => ({ month, cost: Math.round(cost * 100) / 100 }));
+}
+
+function parseKintoneKeys(raw) {
+  if (!raw || !raw.apps) return null;
+  const apiKeys = [];
+  let id = 1;
+  for (const app of raw.apps) {
+    for (const rec of (app.records || [])) {
+      apiKeys.push({
+        id: id++,
+        name:       rec['name']?.value       || rec['キー名前']?.value    || `App${app.appId}-${id}`,
+        purpose:    rec['purpose']?.value    || rec['用途']?.value        || '',
+        model:      rec['model']?.value      || rec['モデル']?.value      || '',
+        registered: rec['registered']?.value || rec['登録日']?.value      || '',
+        status:     rec['status']?.value     || rec['ステータス']?.value   || 'active',
+        memo:       rec['memo']?.value       || rec['メモ']?.value        || '',
+      });
+    }
+  }
+  return apiKeys.length ? apiKeys : null;
+}
+
+async function loadFromAPI() {
+  const base = cfUrl();
+  if (!base) { DATA = MOCK; return; }
+
+  const now   = Math.floor(Date.now() / 1000);
+  const start = now - 30 * 86400; // last 30 days
+
+  const [usageRes, costsRes] = await Promise.allSettled([
+    fetch(`${base}/openai/usage?start_time=${start}&bucket_width=1d`).then(r => r.json()),
+    fetch(`${base}/openai/costs?start_time=${start}&bucket_width=1d`).then(r => r.json()),
+  ]);
+
+  const daily   = usageRes.status   === 'fulfilled' ? parseOpenAIUsage(usageRes.value)   : null;
+  const monthly = costsRes.status === 'fulfilled' ? parseOpenAICosts(costsRes.value) : null;
+
+  // Compute summary from live daily data
+  let summary = MOCK.summary;
+  if (daily) {
+    const totalInput  = daily.reduce((s, d) => s + d.input,  0);
+    const totalOutput = daily.reduce((s, d) => s + d.output, 0);
+    summary = { ...MOCK.summary, totalTokens: totalInput + totalOutput };
+  }
+
+  // Try kintone keys if app IDs are stored
+  const kintoneAppIds = localStorage.getItem('kintone_appid') || '';
+  let apiKeys = MOCK.apiKeys;
+  if (kintoneAppIds) {
+    try {
+      const kRes = await fetch(`${base}/kintone/keys?app=${encodeURIComponent(kintoneAppIds)}`);
+      const kJson = await kRes.json();
+      apiKeys = parseKintoneKeys(kJson) || MOCK.apiKeys;
+    } catch (_) { /* fall back to MOCK */ }
+  }
+
+  DATA = {
+    ...MOCK,
+    summary,
+    daily:   daily   || MOCK.daily,
+    monthly: monthly || MOCK.monthly,
+    apiKeys,
+  };
+}
+
 // ─── Mock Data ───────────────────────────────────────────────────────────────
 const MOCK = {
   summary: { totalTokens: 4_823_150, totalCost: 28.74, totalRequests: 3_412, avgLatency: 842 },
@@ -569,7 +669,7 @@ function lightOpts(extra = {}) {
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 function initDashboard() {
-  const s = MOCK.summary;
+  const s = DATA.summary;
   document.getElementById('stat-tokens').textContent   = fmt(s.totalTokens);
   document.getElementById('stat-cost').textContent     = usd(s.totalCost);
   document.getElementById('stat-requests').textContent = fmt(s.totalRequests);
@@ -578,10 +678,10 @@ function initDashboard() {
   makeChart('usageChart', {
     type: 'line',
     data: {
-      labels: MOCK.daily.map(d => d.date),
+      labels: DATA.daily.map(d => d.date),
       datasets: [
-        { label:'Input tokens',  data: MOCK.daily.map(d=>d.input),  borderColor: PALETTE[0], backgroundColor:'rgba(99,102,241,.08)',  tension:.4, fill:true, pointRadius:3, pointBackgroundColor:PALETTE[0] },
-        { label:'Output tokens', data: MOCK.daily.map(d=>d.output), borderColor: PALETTE[1], backgroundColor:'rgba(16,185,129,.08)',  tension:.4, fill:true, pointRadius:3, pointBackgroundColor:PALETTE[1] },
+        { label:'Input tokens',  data: DATA.daily.map(d=>d.input),  borderColor: PALETTE[0], backgroundColor:'rgba(99,102,241,.08)',  tension:.4, fill:true, pointRadius:3, pointBackgroundColor:PALETTE[0] },
+        { label:'Output tokens', data: DATA.daily.map(d=>d.output), borderColor: PALETTE[1], backgroundColor:'rgba(16,185,129,.08)',  tension:.4, fill:true, pointRadius:3, pointBackgroundColor:PALETTE[1] },
       ],
     },
     options: lightOpts(),
@@ -590,14 +690,14 @@ function initDashboard() {
   makeChart('modelChart', {
     type: 'bar',
     data: {
-      labels: MOCK.models.map(m=>m.name),
-      datasets: [{ label:'トークン数', data:MOCK.models.map(m=>m.tokens), backgroundColor:PALETTE, borderRadius:6, barThickness:16 }],
+      labels: DATA.models.map(m=>m.name),
+      datasets: [{ label:'トークン数', data:DATA.models.map(m=>m.tokens), backgroundColor:PALETTE, borderRadius:6, barThickness:16 }],
     },
     options: lightOpts({ indexAxis:'y', plugins:{ legend:{display:false} } }),
   });
 
-  const totalCost0 = MOCK.keyUsage.reduce((s,k) => s+k.inputCost+k.outputCost, 0);
-  document.getElementById('key-usage-tbody').innerHTML = MOCK.keyUsage.map(k => {
+  const totalCost0 = DATA.keyUsage.reduce((s,k) => s+k.inputCost+k.outputCost, 0);
+  document.getElementById('key-usage-tbody').innerHTML = DATA.keyUsage.map(k => {
     const total = k.inputCost + k.outputCost;
     return `<tr>
       <td style="font-weight:600;color:#334155">${esc(k.name)}</td>
@@ -615,8 +715,8 @@ function initCost() {
   makeChart('monthlyChart', {
     type: 'bar',
     data: {
-      labels: MOCK.monthly.map(m=>m.month),
-      datasets: [{ label:'コスト (USD)', data:MOCK.monthly.map(m=>m.cost), backgroundColor:'rgba(99,102,241,.75)', borderColor:PALETTE[0], borderWidth:1, borderRadius:8 }],
+      labels: DATA.monthly.map(m=>m.month),
+      datasets: [{ label:'コスト (USD)', data:DATA.monthly.map(m=>m.cost), backgroundColor:'rgba(99,102,241,.75)', borderColor:PALETTE[0], borderWidth:1, borderRadius:8 }],
     },
     options: lightOpts(),
   });
@@ -624,14 +724,14 @@ function initCost() {
   makeChart('donutChart', {
     type: 'doughnut',
     data: {
-      labels: MOCK.models.map(m=>m.name),
-      datasets: [{ data:MOCK.models.map(m=>m.cost), backgroundColor:PALETTE, borderWidth:3, borderColor:'#fff', hoverOffset:4 }],
+      labels: DATA.models.map(m=>m.name),
+      datasets: [{ data:DATA.models.map(m=>m.cost), backgroundColor:PALETTE, borderWidth:3, borderColor:'#fff', hoverOffset:4 }],
     },
     options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:'#64748b', boxWidth:10, padding:10, font:{size:11} } } }, cutout:'65%' },
   });
 
-  const totalCost = MOCK.keyUsage.reduce((s,k) => s+k.inputCost+k.outputCost, 0);
-  document.getElementById('key-cost-tbody').innerHTML = MOCK.keyUsage.map(k => {
+  const totalCost = DATA.keyUsage.reduce((s,k) => s+k.inputCost+k.outputCost, 0);
+  document.getElementById('key-cost-tbody').innerHTML = DATA.keyUsage.map(k => {
     const total = k.inputCost + k.outputCost;
     const pct   = Math.round(total / totalCost * 100);
     return `<tr>
@@ -645,8 +745,8 @@ function initCost() {
     </tr>`;
   }).join('');
 
-  document.getElementById('kintone-apps-count').textContent = MOCK.kintoneApps.length + ' アプリ';
-  document.getElementById('kintone-apps-tbody').innerHTML = MOCK.kintoneApps.map(a => `
+  document.getElementById('kintone-apps-count').textContent = DATA.kintoneApps.length + ' アプリ';
+  document.getElementById('kintone-apps-tbody').innerHTML = DATA.kintoneApps.map(a => `
     <tr>
       <td style="font-weight:600;color:#334155">${esc(a.name)}</td>
       <td>${esc(a.purpose)}</td>
@@ -660,7 +760,7 @@ function initCost() {
 // ─── API Keys ────────────────────────────────────────────────────────────────
 function initKintone(filter = '') {
   const q = filter.trim();
-  const filtered = MOCK.apiKeys.filter(k => !q || k.name.includes(q) || k.purpose.includes(q) || k.model.includes(q));
+  const filtered = DATA.apiKeys.filter(k => !q || k.name.includes(q) || k.purpose.includes(q) || k.model.includes(q));
   document.getElementById('keys-count').textContent = filtered.length + ' 件';
   document.getElementById('keys-tbody').innerHTML = filtered.map(k => `
     <tr>
@@ -678,7 +778,7 @@ function initKintone(filter = '') {
 let prevFocus = null;
 
 function openModal(id) {
-  const k = MOCK.apiKeys.find(k => k.id === id);
+  const k = DATA.apiKeys.find(k => k.id === id);
   if (!k) return;
   prevFocus = document.activeElement;
   document.getElementById('modal-title').textContent = k.name;
@@ -727,9 +827,13 @@ function switchTab(tab) {
 }
 
 // ─── Boot ────────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('last-updated').textContent =
     new Date().toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) + ' 更新';
+
+  // Load live data from CF (falls back to MOCK if CF URL not configured or request fails)
+  DATA = MOCK;
+  try { await loadFromAPI(); } catch (_) { DATA = MOCK; }
 
   initDashboard();
 
@@ -750,8 +854,9 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.classList.add('active');
   });
 
-  document.getElementById('btn-refresh').addEventListener('click', () => {
+  document.getElementById('btn-refresh').addEventListener('click', async () => {
     const cur = document.querySelector('[aria-selected="true"]').id.replace('btn-', '');
+    try { await loadFromAPI(); } catch (_) { DATA = MOCK; }
     switchTab(cur);
     document.getElementById('last-updated').textContent =
       new Date().toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) + ' 更新';
@@ -766,17 +871,25 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) closeModal(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('modal').style.display === 'flex') closeModal(); });
 
-  document.getElementById('save-settings').addEventListener('click', () => {
+  document.getElementById('save-settings').addEventListener('click', async () => {
     localStorage.setItem('cf_url',           document.getElementById('cf-url').value);
     localStorage.setItem('kintone_subdomain', document.getElementById('kintone-subdomain').value);
+    localStorage.setItem('kintone_appid',    document.getElementById('kintone-appid') ? document.getElementById('kintone-appid').value : '');
     const btn = document.getElementById('save-settings');
+    btn.textContent = '取得中…';
+    btn.disabled = true;
+    try { await loadFromAPI(); } catch (_) { DATA = MOCK; }
+    const cur = document.querySelector('[aria-selected="true"]')?.id.replace('btn-', '') || 'dashboard';
+    switchTab(cur);
     btn.textContent = '保存しました ✓';
+    btn.disabled = false;
     setTimeout(() => { btn.textContent = '設定を保存'; }, 1500);
   });
 
-  [['cf-url','cf_url'],['kintone-subdomain','kintone_subdomain']].forEach(([elId, key]) => {
-    const v = localStorage.getItem(key);
-    if (v) document.getElementById(elId).value = v;
+  [['cf-url','cf_url'],['kintone-subdomain','kintone_subdomain'],['kintone-appid','kintone_appid']].forEach(([elId, key]) => {
+    const el = document.getElementById(elId);
+    const v  = localStorage.getItem(key);
+    if (el && v) el.value = v;
   });
 
   // Mobile sidebar toggle
