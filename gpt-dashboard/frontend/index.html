@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja" class="dark">
+<html lang="ja">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,9 +7,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    body { background-color: #0f1117; }
+    body { background-color: #0f1117; color: #cbd5e1; }
     .tab-active {
-      background-color: rgba(99, 102, 241, 0.15);
+      background-color: rgba(99,102,241,0.15);
       color: #a5b4fc;
       border-bottom: 2px solid #6366f1;
     }
@@ -21,22 +21,23 @@
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #1e2030; }
     ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    .hidden { display: none !important; }
   </style>
 </head>
-<body class="text-slate-300 min-h-screen">
+<body class="min-h-screen">
 
   <!-- Header -->
-  <header class="sticky top-0 z-40 border-b border-slate-800 bg-[#0f1117]/90 backdrop-blur-md">
+  <header class="sticky top-0 z-40 border-b border-slate-800" style="background:rgba(15,17,23,0.92);backdrop-filter:blur(12px)">
     <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm">G</div>
+        <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold text-sm" aria-hidden="true">G</div>
         <span class="font-semibold text-slate-100 text-lg">GPT API ダッシュボード</span>
-        <span class="hidden sm:inline px-2 py-0.5 rounded-full bg-emerald-900/40 text-emerald-400 text-xs font-medium border border-emerald-800/50">本番環境キー</span>
+        <span class="hidden sm:inline px-2 py-0.5 rounded-full text-xs font-medium border" style="background:rgba(6,78,59,0.4);color:#34d399;border-color:rgba(6,78,59,0.5)">本番環境</span>
       </div>
       <div class="flex items-center gap-3">
-        <span class="text-slate-500 text-sm hidden md:block">最終更新: 2026/06/05 12:00</span>
-        <button onclick="window.location.reload()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm transition-colors flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        <span id="last-updated" class="text-slate-500 text-sm hidden md:block"></span>
+        <button id="btn-refresh" aria-label="データを更新" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm transition-colors flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
           更新
         </button>
       </div>
@@ -45,36 +46,29 @@
 
   <!-- Tab Navigation -->
   <div class="max-w-7xl mx-auto px-4 pt-4">
-    <nav class="flex gap-1 border-b border-slate-800">
-      <button id="btn-dashboard" onclick="switchTab('dashboard')" class="px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all tab-active text-slate-400 hover:text-slate-200">
-        ダッシュボード
-      </button>
-      <button id="btn-cost" onclick="switchTab('cost')" class="px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all text-slate-400 hover:text-slate-200">
-        コスト分析
-      </button>
-      <button id="btn-kintone" onclick="switchTab('kintone')" class="px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all text-slate-400 hover:text-slate-200">
-        APIキー一覧
-      </button>
-      <button id="btn-settings" onclick="switchTab('settings')" class="px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all text-slate-400 hover:text-slate-200">
-        設定
-      </button>
+    <nav role="tablist" class="flex gap-1 border-b border-slate-800">
+      <button id="btn-dashboard" role="tab" aria-selected="true"  aria-controls="tab-dashboard" class="px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all tab-active">ダッシュボード</button>
+      <button id="btn-cost"      role="tab" aria-selected="false" aria-controls="tab-cost"      class="px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all text-slate-400 hover:text-slate-200">コスト分析</button>
+      <button id="btn-kintone"   role="tab" aria-selected="false" aria-controls="tab-kintone"   class="px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all text-slate-400 hover:text-slate-200">APIキー一覧</button>
+      <button id="btn-settings"  role="tab" aria-selected="false" aria-controls="tab-settings"  class="px-4 py-2.5 text-sm font-medium rounded-t-lg transition-all text-slate-400 hover:text-slate-200">設定</button>
     </nav>
   </div>
 
   <main class="max-w-7xl mx-auto px-4 py-6">
 
     <!-- Tab: Dashboard -->
-    <div id="tab-dashboard">
+    <div id="tab-dashboard" role="tabpanel" aria-labelledby="btn-dashboard">
+
       <!-- Summary Cards -->
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div class="card p-4">
-          <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">総トークン</p>
+          <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">今月の総トークン</p>
           <p id="stat-tokens" class="text-2xl font-bold text-slate-100">—</p>
-          <p class="text-xs text-emerald-400 mt-1">▲ 12% 先月比</p>
+          <p class="text-xs mt-1" style="color:#34d399">▲ 12% 先月比</p>
         </div>
         <div class="card p-4">
           <p class="text-xs text-slate-500 uppercase tracking-wide mb-1">今月のコスト</p>
-          <p id="stat-cost" class="text-2xl font-bold text-indigo-400">—</p>
+          <p id="stat-cost" class="text-2xl font-bold" style="color:#818cf8">—</p>
           <p class="text-xs text-slate-500 mt-1">予算: $50.00</p>
         </div>
         <div class="card p-4">
@@ -89,111 +83,125 @@
         </div>
       </div>
 
-      <!-- Charts Row -->
-      <div class="grid lg:grid-cols-3 gap-4">
+      <!-- Charts -->
+      <div class="grid lg:grid-cols-3 gap-4 mb-6">
         <div class="card p-4 lg:col-span-2">
           <h2 class="text-sm font-semibold text-slate-300 mb-4">直近7日間のトークン使用量</h2>
-          <div class="h-56">
-            <canvas id="usageChart"></canvas>
-          </div>
+          <div class="h-56"><canvas id="usageChart"></canvas></div>
         </div>
         <div class="card p-4">
           <h2 class="text-sm font-semibold text-slate-300 mb-4">モデル別使用量</h2>
-          <div class="h-56">
-            <canvas id="modelChart"></canvas>
-          </div>
+          <div class="h-56"><canvas id="modelChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- APIキー別使用量 -->
+      <div class="card overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-700">
+          <h2 class="text-sm font-semibold text-slate-300">APIキー別使用量（今月）</h2>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-slate-700 text-xs text-slate-500 uppercase">
+                <th class="px-4 py-2 text-left">キー名</th>
+                <th class="px-4 py-2 text-right">Input tokens</th>
+                <th class="px-4 py-2 text-right">Input コスト</th>
+                <th class="px-4 py-2 text-right">Output tokens</th>
+                <th class="px-4 py-2 text-right">Output コスト</th>
+                <th class="px-4 py-2 text-right">合計コスト</th>
+              </tr>
+            </thead>
+            <tbody id="key-usage-tbody"></tbody>
+          </table>
         </div>
       </div>
     </div>
 
     <!-- Tab: Cost -->
-    <div id="tab-cost" class="hidden">
-      <!-- Filter -->
+    <div id="tab-cost" role="tabpanel" aria-labelledby="btn-cost" class="hidden">
+
+      <!-- Period Filter -->
       <div class="flex items-center gap-3 mb-5">
         <span class="text-sm text-slate-400">期間:</span>
-        <div class="flex gap-1">
-          <button class="px-3 py-1 rounded-lg bg-indigo-600 text-white text-sm">30日</button>
-          <button class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition-colors">7日</button>
-          <button class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition-colors">カスタム</button>
+        <div class="flex gap-1" id="period-btns">
+          <button data-period="30" class="period-btn px-3 py-1 rounded-lg text-sm transition-colors bg-indigo-600 text-white">30日</button>
+          <button data-period="7"  class="period-btn px-3 py-1 rounded-lg text-sm transition-colors bg-slate-800 hover:bg-slate-700 text-slate-300">7日</button>
         </div>
       </div>
 
-      <div class="grid lg:grid-cols-3 gap-4">
+      <!-- Charts -->
+      <div class="grid lg:grid-cols-3 gap-4 mb-6">
         <div class="card p-4 lg:col-span-2">
           <h2 class="text-sm font-semibold text-slate-300 mb-4">月別コスト推移</h2>
-          <div class="h-64">
-            <canvas id="monthlyChart"></canvas>
-          </div>
+          <div class="h-64"><canvas id="monthlyChart"></canvas></div>
         </div>
         <div class="card p-4">
           <h2 class="text-sm font-semibold text-slate-300 mb-4">モデル別コスト内訳</h2>
-          <div class="h-64">
-            <canvas id="donutChart"></canvas>
-          </div>
+          <div class="h-64"><canvas id="donutChart"></canvas></div>
         </div>
       </div>
 
-      <!-- Cost Table -->
-      <div class="card mt-4 overflow-hidden">
+      <!-- APIキー別使用量（コスト分析） -->
+      <div class="card overflow-hidden mb-6">
         <div class="px-4 py-3 border-b border-slate-700">
-          <h2 class="text-sm font-semibold text-slate-300">モデル別コスト詳細</h2>
+          <h2 class="text-sm font-semibold text-slate-300">APIキー別使用量詳細</h2>
         </div>
-        <table class="w-full text-sm">
-          <thead>
-            <tr class="border-b border-slate-700 text-xs text-slate-500 uppercase">
-              <th class="px-4 py-2 text-left">モデル</th>
-              <th class="px-4 py-2 text-right">トークン</th>
-              <th class="px-4 py-2 text-right">コスト</th>
-              <th class="px-4 py-2 text-right">割合</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="border-b border-slate-700/60 hover:bg-slate-700/30">
-              <td class="px-4 py-3 font-mono text-indigo-300">gpt-4o</td>
-              <td class="px-4 py-3 text-right text-slate-300">2.10M</td>
-              <td class="px-4 py-3 text-right text-slate-100 font-medium">$14.70</td>
-              <td class="px-4 py-3 text-right"><span class="text-emerald-400">51%</span></td>
-            </tr>
-            <tr class="border-b border-slate-700/60 hover:bg-slate-700/30">
-              <td class="px-4 py-3 font-mono text-indigo-300">gpt-4o-mini</td>
-              <td class="px-4 py-3 text-right text-slate-300">1.85M</td>
-              <td class="px-4 py-3 text-right text-slate-100 font-medium">$7.40</td>
-              <td class="px-4 py-3 text-right"><span class="text-emerald-400">26%</span></td>
-            </tr>
-            <tr class="border-b border-slate-700/60 hover:bg-slate-700/30">
-              <td class="px-4 py-3 font-mono text-indigo-300">gpt-4-turbo</td>
-              <td class="px-4 py-3 text-right text-slate-300">520K</td>
-              <td class="px-4 py-3 text-right text-slate-100 font-medium">$5.20</td>
-              <td class="px-4 py-3 text-right"><span class="text-slate-400">18%</span></td>
-            </tr>
-            <tr class="hover:bg-slate-700/30">
-              <td class="px-4 py-3 font-mono text-indigo-300">gpt-3.5-turbo</td>
-              <td class="px-4 py-3 text-right text-slate-300">353K</td>
-              <td class="px-4 py-3 text-right text-slate-100 font-medium">$1.44</td>
-              <td class="px-4 py-3 text-right"><span class="text-slate-400">5%</span></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-slate-700 text-xs text-slate-500 uppercase">
+                <th class="px-4 py-2 text-left">キー名</th>
+                <th class="px-4 py-2 text-right">Input tokens</th>
+                <th class="px-4 py-2 text-right">Input コスト</th>
+                <th class="px-4 py-2 text-right">Output tokens</th>
+                <th class="px-4 py-2 text-right">Output コスト</th>
+                <th class="px-4 py-2 text-right">合計コスト</th>
+                <th class="px-4 py-2 text-right">割合</th>
+              </tr>
+            </thead>
+            <tbody id="key-cost-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Kintone Apps -->
+      <div class="card overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-slate-300">使用中のKintoneアプリ</h2>
+          <span class="text-xs text-slate-500" id="kintone-apps-count"></span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-slate-700 text-xs text-slate-500 uppercase">
+                <th class="px-4 py-2 text-left">アプリ名</th>
+                <th class="px-4 py-2 text-left">用途</th>
+                <th class="px-4 py-2 text-right">レコード数</th>
+                <th class="px-4 py-2 text-left">連携APIキー</th>
+                <th class="px-4 py-2 text-left">ステータス</th>
+              </tr>
+            </thead>
+            <tbody id="kintone-apps-tbody"></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
-    <!-- Tab: Kintone / API Keys -->
-    <div id="tab-kintone" class="hidden">
+    <!-- Tab: API Keys (Kintone) -->
+    <div id="tab-kintone" role="tabpanel" aria-labelledby="btn-kintone" class="hidden">
       <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <div class="flex items-center gap-2 text-sm text-slate-400">
-          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-          Kintone 連携済み
+          <span class="w-2 h-2 rounded-full" style="background:#34d399" aria-hidden="true"></span>
+          <span>Kintone 連携済み</span>
           <span class="text-slate-600">|</span>
-          <span>5件のレコード</span>
+          <span id="keys-count"></span>
         </div>
-        <input
-          id="search-keys"
-          type="text"
-          placeholder="キー名・用途・モデルで検索..."
-          class="px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-indigo-500 w-64"
-        />
+        <label class="sr-only" for="search-keys">APIキーを検索</label>
+        <input id="search-keys" type="search" placeholder="キー名・用途・モデルで検索..."
+          class="px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none w-64"
+          style="background:#1e293b;border:1px solid #334155" />
       </div>
-
       <div class="card overflow-hidden">
         <table class="w-full text-sm">
           <thead>
@@ -206,47 +214,37 @@
               <th class="px-4 py-3 text-left"></th>
             </tr>
           </thead>
-          <tbody id="keys-tbody">
-          </tbody>
+          <tbody id="keys-tbody"></tbody>
         </table>
       </div>
     </div>
 
     <!-- Tab: Settings -->
-    <div id="tab-settings" class="hidden">
+    <div id="tab-settings" role="tabpanel" aria-labelledby="btn-settings" class="hidden">
       <div class="max-w-xl space-y-5">
         <div class="card p-5">
           <h2 class="text-sm font-semibold text-slate-200 mb-4">Cloud Function 設定</h2>
-          <div class="space-y-3">
-            <div>
-              <label class="block text-xs text-slate-400 mb-1.5">Cloud Function URL</label>
-              <input id="cf-url" type="url" placeholder="https://asia-northeast1-xxx.cloudfunctions.net/gpt-dashboard-proxy"
-                class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-indigo-500" />
-            </div>
+          <div>
+            <label for="cf-url" class="block text-xs text-slate-400 mb-1.5">Cloud Function URL</label>
+            <input id="cf-url" type="url" placeholder="https://asia-northeast1-xxx.cloudfunctions.net/gpt-dashboard-proxy"
+              class="w-full px-3 py-2 rounded-lg text-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              style="background:#1e293b;border:1px solid #334155" />
           </div>
         </div>
-
         <div class="card p-5">
-          <h2 class="text-sm font-semibold text-slate-200 mb-4">Kintone 設定</h2>
-          <div class="space-y-3">
-            <div>
-              <label class="block text-xs text-slate-400 mb-1.5">サブドメイン</label>
-              <div class="flex items-center">
-                <input id="kintone-subdomain" type="text" placeholder="yourcompany"
-                  class="flex-1 px-3 py-2 rounded-l-lg bg-slate-800 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-indigo-500" />
-                <span class="px-3 py-2 bg-slate-700 border border-l-0 border-slate-700 rounded-r-lg text-slate-400 text-sm">.cybozu.com</span>
-              </div>
-            </div>
-            <div>
-              <label class="block text-xs text-slate-400 mb-1.5">アプリID</label>
-              <input id="kintone-appid" type="text" placeholder="123"
-                class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-indigo-500" />
+          <h2 class="text-sm font-semibold text-slate-200 mb-1">Kintone 設定</h2>
+          <p class="text-xs text-slate-500 mb-4">サブドメインを設定するとCloud Function経由でアプリ情報を自動取得します。</p>
+          <div>
+            <label for="kintone-subdomain" class="block text-xs text-slate-400 mb-1.5">サブドメイン</label>
+            <div class="flex items-center">
+              <input id="kintone-subdomain" type="text" placeholder="yourcompany"
+                class="flex-1 px-3 py-2 rounded-l-lg text-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                style="background:#1e293b;border:1px solid #334155;border-right:none" />
+              <span class="px-3 py-2 text-slate-400 text-sm rounded-r-lg" style="background:#1e293b;border:1px solid #334155;border-left:none">.cybozu.com</span>
             </div>
           </div>
         </div>
-
-        <button id="save-settings"
-          class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors">
+        <button id="save-settings" class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium transition-colors">
           設定を保存
         </button>
       </div>
@@ -255,217 +253,371 @@
   </main>
 
   <!-- Modal -->
-  <div id="modal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/70 backdrop-blur-sm">
+  <div id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"
+    class="hidden fixed inset-0 z-50 items-center justify-center"
+    style="background:rgba(0,0,0,0.7);backdrop-filter:blur(4px)">
     <div class="card w-full max-w-sm mx-4 p-5">
       <div class="flex items-center justify-between mb-4">
         <h3 id="modal-title" class="font-semibold text-slate-100"></h3>
-        <button onclick="closeModal()" class="text-slate-500 hover:text-slate-300 transition-colors">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <button id="modal-close" aria-label="モーダルを閉じる" class="text-slate-500 hover:text-slate-300 transition-colors">
+          <svg class="w-5 h-5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
           </svg>
         </button>
       </div>
-      <div id="modal-body"></div>
+      <dl id="modal-body" class="space-y-3 text-sm"></dl>
     </div>
   </div>
 
-  <script>
-    const MOCK = {
-      summary: {
-        totalTokens: 4_823_150,
-        totalCost: 28.74,
-        totalRequests: 3_412,
-        avgLatency: 842,
-      },
-      daily: [
-        { date: '05/30', input: 210000, output: 98000, cost: 2.14 },
-        { date: '05/31', input: 380000, output: 142000, cost: 3.87 },
-        { date: '06/01', input: 295000, output: 115000, cost: 2.93 },
-        { date: '06/02', input: 520000, output: 198000, cost: 5.21 },
-        { date: '06/03', input: 170000, output: 72000, cost: 1.76 },
-        { date: '06/04', input: 445000, output: 168000, cost: 4.44 },
-        { date: '06/05', input: 310000, output: 119000, cost: 3.12 },
+<script>
+// ─── Mock Data ───────────────────────────────────────────────────────────────
+const MOCK = {
+  summary: { totalTokens: 4_823_150, totalCost: 28.74, totalRequests: 3_412, avgLatency: 842 },
+
+  daily: [
+    { date: '05/30', input: 210000, output:  98000 },
+    { date: '05/31', input: 380000, output: 142000 },
+    { date: '06/01', input: 295000, output: 115000 },
+    { date: '06/02', input: 520000, output: 198000 },
+    { date: '06/03', input: 170000, output:  72000 },
+    { date: '06/04', input: 445000, output: 168000 },
+    { date: '06/05', input: 310000, output: 119000 },
+  ],
+
+  models: [
+    { name: 'gpt-4o',        tokens: 2_100_000, cost: 14.70 },
+    { name: 'gpt-4o-mini',   tokens: 1_850_000, cost:  7.40 },
+    { name: 'gpt-4-turbo',   tokens:   520_000, cost:  5.20 },
+    { name: 'gpt-3.5-turbo', tokens:   353_150, cost:  1.44 },
+  ],
+
+  monthly: [
+    { month: '2026/01', cost: 18.40 },
+    { month: '2026/02', cost: 22.10 },
+    { month: '2026/03', cost: 15.80 },
+    { month: '2026/04', cost: 31.50 },
+    { month: '2026/05', cost: 26.30 },
+    { month: '2026/06', cost: 28.74 },
+  ],
+
+  // APIキー別使用量（入力・出力・コスト）
+  keyUsage: [
+    { name: '本番環境キー',      inputTokens: 1_950_000, outputTokens:  720_000, inputCost: 9.75, outputCost: 7.20 },
+    { name: 'ステージングキー',  inputTokens:   840_000, outputTokens:  310_000, inputCost: 1.68, outputCost: 1.55 },
+    { name: '開発用キー（個人）', inputTokens:   420_000, outputTokens:  158_000, inputCost: 0.42, outputCost: 0.79 },
+    { name: 'バッチ処理キー',    inputTokens:   215_000, outputTokens:   82_000, inputCost: 0.22, outputCost: 0.41 },
+  ],
+
+  // Kintoneアプリ一覧（複数対応）
+  kintoneApps: [
+    { name: '顧客問い合わせ管理', purpose: 'チャットボット応答',   records: 1240, linkedKey: '本番環境キー',     status: 'active' },
+    { name: '社内Q&Aナレッジ',   purpose: 'RAG・文書検索',        records:  380, linkedKey: '本番環境キー',     status: 'active' },
+    { name: '翻訳依頼フォーム',  purpose: '多言語翻訳自動化',     records:  892, linkedKey: 'ステージングキー', status: 'active' },
+    { name: '議事録自動生成',    purpose: '音声→テキスト要約',    records:  156, linkedKey: 'バッチ処理キー',   status: 'active' },
+    { name: '旧CRMシステム連携', purpose: 'データ移行（完了済み）', records: 3501, linkedKey: '旧プロジェクトキー', status: 'inactive' },
+  ],
+
+  apiKeys: [
+    { id: 1, name: '本番環境キー',      purpose: 'プロダクション', model: 'gpt-4o',        registered: '2025-12-01', status: 'active',   memo: 'メインサービス用' },
+    { id: 2, name: 'ステージングキー',  purpose: 'テスト・検証',   model: 'gpt-4o-mini',   registered: '2026-01-15', status: 'active',   memo: 'QA環境で使用' },
+    { id: 3, name: '開発用キー（個人）', purpose: '開発',          model: 'gpt-3.5-turbo', registered: '2026-02-10', status: 'active',   memo: 'ローカル開発用' },
+    { id: 4, name: '旧プロジェクトキー', purpose: 'レガシー',      model: 'gpt-4-turbo',   registered: '2025-08-20', status: 'inactive', memo: '旧システム移行済み' },
+    { id: 5, name: 'バッチ処理キー',    purpose: 'データ処理',    model: 'gpt-4o-mini',   registered: '2026-03-05', status: 'active',   memo: '夜間バッチ処理用' },
+  ],
+};
+
+// ─── Utils ───────────────────────────────────────────────────────────────────
+const fmt = n =>
+  n >= 1_000_000 ? (n / 1_000_000).toFixed(2) + 'M'
+  : n >= 1_000   ? (n / 1_000).toFixed(1) + 'K'
+  : String(n);
+
+const esc = s => {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+};
+
+const usd = n => '$' + n.toFixed(2);
+
+// ─── Chart helpers ───────────────────────────────────────────────────────────
+const PALETTE = ['#818cf8', '#34d399', '#fb923c', '#f472b6', '#38bdf8'];
+
+function baseOpts() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#94a3b8', boxWidth: 12 } } },
+    scales: {
+      x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(100,116,139,0.1)' } },
+      y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(100,116,139,0.1)' } },
+    },
+  };
+}
+
+const charts = {};
+function makeChart(id, config) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), config);
+}
+
+// ─── Badge helpers ───────────────────────────────────────────────────────────
+function statusBadge(status) {
+  return status === 'active'
+    ? '<span style="padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600;background:rgba(6,78,59,0.5);color:#34d399">有効</span>'
+    : '<span style="padding:2px 8px;border-radius:9999px;font-size:11px;font-weight:600;background:#1e293b;color:#64748b">無効</span>';
+}
+
+// ─── Tab: Dashboard ──────────────────────────────────────────────────────────
+function initDashboard() {
+  const s = MOCK.summary;
+  document.getElementById('stat-tokens').textContent   = fmt(s.totalTokens);
+  document.getElementById('stat-cost').textContent     = usd(s.totalCost);
+  document.getElementById('stat-requests').textContent = fmt(s.totalRequests);
+  document.getElementById('stat-latency').textContent  = s.avgLatency + 'ms';
+
+  makeChart('usageChart', {
+    type: 'line',
+    data: {
+      labels: MOCK.daily.map(d => d.date),
+      datasets: [
+        { label: 'Input tokens',  data: MOCK.daily.map(d => d.input),  borderColor: PALETTE[0], backgroundColor: 'rgba(129,140,248,0.15)', tension: 0.4, fill: true, pointRadius: 4 },
+        { label: 'Output tokens', data: MOCK.daily.map(d => d.output), borderColor: PALETTE[1], backgroundColor: 'rgba(52,211,153,0.15)',  tension: 0.4, fill: true, pointRadius: 4 },
       ],
-      models: [
-        { name: 'gpt-4o',        tokens: 2_100_000, cost: 14.70 },
-        { name: 'gpt-4o-mini',   tokens: 1_850_000, cost:  7.40 },
-        { name: 'gpt-4-turbo',   tokens:   520_000, cost:  5.20 },
-        { name: 'gpt-3.5-turbo', tokens:   353_150, cost:  1.44 },
-      ],
-      monthly: [
-        { month: '2026/01', cost: 18.40 },
-        { month: '2026/02', cost: 22.10 },
-        { month: '2026/03', cost: 15.80 },
-        { month: '2026/04', cost: 31.50 },
-        { month: '2026/05', cost: 26.30 },
-        { month: '2026/06', cost: 28.74 },
-      ],
-      apiKeys: [
-        { id: 1, name: '本番環境キー',     purpose: 'プロダクション', model: 'gpt-4o',        registered: '2025-12-01', status: 'active',   memo: 'メインサービス用' },
-        { id: 2, name: 'ステージングキー', purpose: 'テスト・検証',   model: 'gpt-4o-mini',   registered: '2026-01-15', status: 'active',   memo: 'QA環境で使用' },
-        { id: 3, name: '開発用キー（個人）', purpose: '開発',         model: 'gpt-3.5-turbo', registered: '2026-02-10', status: 'active',   memo: 'ローカル開発用' },
-        { id: 4, name: '旧プロジェクトキー', purpose: 'レガシー',     model: 'gpt-4-turbo',   registered: '2025-08-20', status: 'inactive', memo: '旧システム移行済み' },
-        { id: 5, name: 'バッチ処理キー',   purpose: 'データ処理',    model: 'gpt-4o-mini',   registered: '2026-03-05', status: 'active',   memo: '夜間バッチ処理用' },
-      ],
-    };
+    },
+    options: baseOpts(),
+  });
 
-    let usageChart, modelChart, monthlyChart, donutChart;
+  makeChart('modelChart', {
+    type: 'bar',
+    data: {
+      labels: MOCK.models.map(m => m.name),
+      datasets: [{ label: 'トークン数', data: MOCK.models.map(m => m.tokens), backgroundColor: PALETTE, borderRadius: 6 }],
+    },
+    options: { ...baseOpts(), indexAxis: 'y' },
+  });
 
-    function fmt(n) {
-      if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M';
-      if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
-      return n.toString();
-    }
+  // APIキー別使用量テーブル
+  const tbody = document.getElementById('key-usage-tbody');
+  tbody.innerHTML = MOCK.keyUsage.map(k => {
+    const total = k.inputCost + k.outputCost;
+    return `<tr style="border-bottom:1px solid rgba(51,65,85,0.6)">
+      <td class="px-4 py-3 font-medium text-slate-100">${esc(k.name)}</td>
+      <td class="px-4 py-3 text-right text-slate-400">${fmt(k.inputTokens)}</td>
+      <td class="px-4 py-3 text-right" style="color:#818cf8">${usd(k.inputCost)}</td>
+      <td class="px-4 py-3 text-right text-slate-400">${fmt(k.outputTokens)}</td>
+      <td class="px-4 py-3 text-right" style="color:#34d399">${usd(k.outputCost)}</td>
+      <td class="px-4 py-3 text-right font-semibold text-slate-100">${usd(total)}</td>
+    </tr>`;
+  }).join('');
+}
 
-    function chartOptions() {
-      return {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { labels: { color: '#94a3b8', boxWidth: 12 } } },
-        scales: {
-          x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(100,116,139,0.1)' } },
-          y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(100,116,139,0.1)' } },
-        },
-      };
-    }
+// ─── Tab: Cost ───────────────────────────────────────────────────────────────
+function initCost() {
+  makeChart('monthlyChart', {
+    type: 'bar',
+    data: {
+      labels: MOCK.monthly.map(m => m.month),
+      datasets: [{ label: 'コスト (USD)', data: MOCK.monthly.map(m => m.cost), backgroundColor: 'rgba(129,140,248,0.7)', borderColor: PALETTE[0], borderWidth: 1, borderRadius: 6 }],
+    },
+    options: baseOpts(),
+  });
 
-    function initDashboard() {
-      document.getElementById('stat-tokens').textContent   = fmt(MOCK.summary.totalTokens);
-      document.getElementById('stat-cost').textContent     = '$' + MOCK.summary.totalCost.toFixed(2);
-      document.getElementById('stat-requests').textContent = fmt(MOCK.summary.totalRequests);
-      document.getElementById('stat-latency').textContent  = MOCK.summary.avgLatency + 'ms';
+  makeChart('donutChart', {
+    type: 'doughnut',
+    data: {
+      labels: MOCK.models.map(m => m.name),
+      datasets: [{ data: MOCK.models.map(m => m.cost), backgroundColor: PALETTE, borderWidth: 2, borderColor: '#1e2030' }],
+    },
+    options: { plugins: { legend: { labels: { color: '#94a3b8' } } } },
+  });
 
-      const labels     = MOCK.daily.map(d => d.date);
-      const inputData  = MOCK.daily.map(d => d.input);
-      const outputData = MOCK.daily.map(d => d.output);
+  // APIキー別使用量詳細
+  const totalCost = MOCK.keyUsage.reduce((s, k) => s + k.inputCost + k.outputCost, 0);
+  document.getElementById('key-cost-tbody').innerHTML = MOCK.keyUsage.map(k => {
+    const total = k.inputCost + k.outputCost;
+    const pct   = Math.round(total / totalCost * 100);
+    return `<tr style="border-bottom:1px solid rgba(51,65,85,0.6)">
+      <td class="px-4 py-3 font-medium text-slate-100">${esc(k.name)}</td>
+      <td class="px-4 py-3 text-right text-slate-400">${fmt(k.inputTokens)}</td>
+      <td class="px-4 py-3 text-right" style="color:#818cf8">${usd(k.inputCost)}</td>
+      <td class="px-4 py-3 text-right text-slate-400">${fmt(k.outputTokens)}</td>
+      <td class="px-4 py-3 text-right" style="color:#34d399">${usd(k.outputCost)}</td>
+      <td class="px-4 py-3 text-right font-semibold text-slate-100">${usd(total)}</td>
+      <td class="px-4 py-3 text-right text-slate-400">${pct}%</td>
+    </tr>`;
+  }).join('');
 
-      if (usageChart) usageChart.destroy();
-      usageChart = new Chart(document.getElementById('usageChart'), {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            { label: 'Input tokens',  data: inputData,  borderColor: '#818cf8', backgroundColor: 'rgba(129,140,248,0.15)', tension: 0.4, fill: true, pointRadius: 4 },
-            { label: 'Output tokens', data: outputData, borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.15)',  tension: 0.4, fill: true, pointRadius: 4 },
-          ],
-        },
-        options: chartOptions(),
-      });
+  // Kintoneアプリ一覧
+  document.getElementById('kintone-apps-count').textContent = MOCK.kintoneApps.length + ' アプリ';
+  document.getElementById('kintone-apps-tbody').innerHTML = MOCK.kintoneApps.map(a => `
+    <tr style="border-bottom:1px solid rgba(51,65,85,0.6)">
+      <td class="px-4 py-3 font-medium text-slate-100">${esc(a.name)}</td>
+      <td class="px-4 py-3 text-slate-400">${esc(a.purpose)}</td>
+      <td class="px-4 py-3 text-right text-slate-300">${a.records.toLocaleString()}</td>
+      <td class="px-4 py-3"><span style="padding:2px 8px;border-radius:4px;background:#1e293b;color:#818cf8;font-size:11px;font-family:monospace">${esc(a.linkedKey)}</span></td>
+      <td class="px-4 py-3">${statusBadge(a.status)}</td>
+    </tr>
+  `).join('');
+}
 
-      if (modelChart) modelChart.destroy();
-      modelChart = new Chart(document.getElementById('modelChart'), {
-        type: 'bar',
-        data: {
-          labels: MOCK.models.map(m => m.name),
-          datasets: [{ label: 'トークン数', data: MOCK.models.map(m => m.tokens), backgroundColor: ['#818cf8','#34d399','#fb923c','#f472b6'], borderRadius: 6 }],
-        },
-        options: { ...chartOptions(), indexAxis: 'y' },
-      });
-    }
+// ─── Tab: API Keys ───────────────────────────────────────────────────────────
+function initKintone(filter = '') {
+  const q        = filter.trim();
+  const filtered = MOCK.apiKeys.filter(k =>
+    !q || k.name.includes(q) || k.purpose.includes(q) || k.model.includes(q)
+  );
+  document.getElementById('keys-count').textContent = filtered.length + '件のレコード';
+  document.getElementById('keys-tbody').innerHTML = filtered.map(k => `
+    <tr style="border-bottom:1px solid rgba(51,65,85,0.6)">
+      <td class="px-4 py-3 font-medium text-slate-100">${esc(k.name)}</td>
+      <td class="px-4 py-3 text-slate-400">${esc(k.purpose)}</td>
+      <td class="px-4 py-3"><span style="padding:2px 8px;border-radius:4px;background:#1e293b;color:#818cf8;font-size:11px;font-family:monospace">${esc(k.model)}</span></td>
+      <td class="px-4 py-3 text-slate-400 text-sm">${esc(k.registered)}</td>
+      <td class="px-4 py-3">${statusBadge(k.status)}</td>
+      <td class="px-4 py-3">
+        <button class="detail-btn text-sm transition-colors" style="color:#818cf8" data-id="${k.id}" aria-label="${esc(k.name)}の詳細を表示">詳細</button>
+      </td>
+    </tr>
+  `).join('');
+}
 
-    function initCost() {
-      if (monthlyChart) monthlyChart.destroy();
-      monthlyChart = new Chart(document.getElementById('monthlyChart'), {
-        type: 'bar',
-        data: {
-          labels: MOCK.monthly.map(m => m.month),
-          datasets: [{ label: 'コスト (USD)', data: MOCK.monthly.map(m => m.cost), backgroundColor: 'rgba(129,140,248,0.7)', borderColor: '#818cf8', borderWidth: 1, borderRadius: 6 }],
-        },
-        options: chartOptions(),
-      });
+// ─── Modal ───────────────────────────────────────────────────────────────────
+let prevFocus = null;
 
-      if (donutChart) donutChart.destroy();
-      donutChart = new Chart(document.getElementById('donutChart'), {
-        type: 'doughnut',
-        data: {
-          labels: MOCK.models.map(m => m.name),
-          datasets: [{ data: MOCK.models.map(m => m.cost), backgroundColor: ['#818cf8','#34d399','#fb923c','#f472b6'], borderWidth: 2, borderColor: '#1e2030' }],
-        },
-        options: { plugins: { legend: { labels: { color: '#94a3b8' } } } },
-      });
-    }
+function openModal(id) {
+  const k = MOCK.apiKeys.find(k => k.id === id);
+  if (!k) return;
+  prevFocus = document.activeElement;
 
-    function initKintone(filterText = '') {
-      const tbody    = document.getElementById('keys-tbody');
-      const filtered = MOCK.apiKeys.filter(k =>
-        k.name.includes(filterText) || k.purpose.includes(filterText) || k.model.includes(filterText)
-      );
-      tbody.innerHTML = filtered.map(k => `
-        <tr class="border-b border-slate-700 hover:bg-slate-700/40 transition-colors">
-          <td class="px-4 py-3 font-medium text-slate-100">${k.name}</td>
-          <td class="px-4 py-3 text-slate-400">${k.purpose}</td>
-          <td class="px-4 py-3"><span class="px-2 py-0.5 rounded bg-slate-700 text-indigo-300 text-xs font-mono">${k.model}</span></td>
-          <td class="px-4 py-3 text-slate-400 text-sm">${k.registered}</td>
-          <td class="px-4 py-3">
-            <span class="px-2 py-1 rounded-full text-xs font-semibold ${k.status === 'active' ? 'bg-emerald-900/60 text-emerald-400' : 'bg-slate-700 text-slate-400'}">
-              ${k.status === 'active' ? '有効' : '無効'}
-            </span>
-          </td>
-          <td class="px-4 py-3">
-            <button onclick="openModal(${k.id})" class="text-indigo-400 hover:text-indigo-300 text-sm transition-colors">詳細</button>
-          </td>
-        </tr>
-      `).join('');
-    }
+  document.getElementById('modal-title').textContent = k.name;
 
-    function openModal(id) {
-      const k = MOCK.apiKeys.find(k => k.id === id);
-      if (!k) return;
-      document.getElementById('modal-title').textContent = k.name;
-      document.getElementById('modal-body').innerHTML = `
-        <dl class="space-y-3 text-sm">
-          <div class="flex justify-between"><dt class="text-slate-400">用途</dt><dd class="text-slate-100">${k.purpose}</dd></div>
-          <div class="flex justify-between"><dt class="text-slate-400">モデル</dt><dd class="font-mono text-indigo-300">${k.model}</dd></div>
-          <div class="flex justify-between"><dt class="text-slate-400">登録日</dt><dd class="text-slate-100">${k.registered}</dd></div>
-          <div class="flex justify-between"><dt class="text-slate-400">ステータス</dt>
-            <dd><span class="px-2 py-0.5 rounded-full text-xs font-semibold ${k.status === 'active' ? 'bg-emerald-900/60 text-emerald-400' : 'bg-slate-700 text-slate-400'}">${k.status === 'active' ? '有効' : '無効'}</span></dd>
-          </div>
-          <div class="pt-2 border-t border-slate-700"><dt class="text-slate-400 mb-1">メモ</dt><dd class="text-slate-300">${k.memo}</dd></div>
-        </dl>
-      `;
-      document.getElementById('modal').classList.remove('hidden');
-      document.getElementById('modal').classList.add('flex');
-    }
+  const dl = document.getElementById('modal-body');
+  dl.innerHTML = '';
 
-    function closeModal() {
-      document.getElementById('modal').classList.add('hidden');
-      document.getElementById('modal').classList.remove('flex');
-    }
+  const rows = [
+    ['用途',       k.purpose],
+    ['モデル',     k.model],
+    ['登録日',     k.registered],
+    ['ステータス', k.status === 'active' ? '有効' : '無効'],
+    ['メモ',       k.memo],
+  ];
+  rows.forEach(([label, value]) => {
+    const div = document.createElement('div');
+    div.className = 'flex justify-between gap-4';
+    const dt = document.createElement('dt');
+    dt.className = 'text-slate-400';
+    dt.textContent = label;
+    const dd = document.createElement('dd');
+    dd.className = 'text-slate-100 text-right';
+    dd.textContent = value;
+    div.append(dt, dd);
+    dl.appendChild(div);
+  });
 
-    function switchTab(tab) {
-      ['dashboard', 'cost', 'kintone', 'settings'].forEach(t => {
-        document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
-        document.getElementById('btn-' + t).classList.toggle('tab-active', t === tab);
-      });
-      if (tab === 'dashboard') initDashboard();
-      if (tab === 'cost')      initCost();
-      if (tab === 'kintone')   initKintone();
-    }
+  const modal = document.getElementById('modal');
+  modal.classList.remove('hidden');
+  modal.style.display = 'flex';
+  document.getElementById('modal-close').focus();
+}
 
-    document.addEventListener('DOMContentLoaded', () => {
-      initDashboard();
+function closeModal() {
+  const modal = document.getElementById('modal');
+  modal.classList.add('hidden');
+  modal.style.display = '';
+  if (prevFocus) prevFocus.focus();
+}
 
-      document.getElementById('search-keys').addEventListener('input', e => initKintone(e.target.value));
+// ─── Tab Switching ───────────────────────────────────────────────────────────
+const TABS = ['dashboard', 'cost', 'kintone', 'settings'];
 
-      document.getElementById('modal').addEventListener('click', e => {
-        if (e.target === document.getElementById('modal')) closeModal();
-      });
+function switchTab(tab) {
+  TABS.forEach(t => {
+    const panel = document.getElementById('tab-' + t);
+    const btn   = document.getElementById('btn-' + t);
+    const active = t === tab;
+    panel.classList.toggle('hidden', !active);
+    btn.classList.toggle('tab-active', active);
+    btn.setAttribute('aria-selected', String(active));
+    if (!active) btn.className = btn.className.replace('tab-active', '').replace('text-slate-400', '') + ' text-slate-400';
+  });
+  if (tab === 'dashboard') initDashboard();
+  if (tab === 'cost')      initCost();
+  if (tab === 'kintone')   initKintone(document.getElementById('search-keys').value);
+}
 
-      document.getElementById('save-settings').addEventListener('click', () => {
-        localStorage.setItem('cf_url',             document.getElementById('cf-url').value);
-        localStorage.setItem('kintone_subdomain',  document.getElementById('kintone-subdomain').value);
-        localStorage.setItem('kintone_appid',      document.getElementById('kintone-appid').value);
-        const btn = document.getElementById('save-settings');
-        btn.textContent = '保存しました ✓';
-        setTimeout(() => btn.textContent = '設定を保存', 1500);
-      });
+// ─── Init ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('last-updated').textContent =
+    '最終更新: ' + new Date().toLocaleString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
 
-      ['cf_url','kintone_subdomain','kintone_appid'].forEach(key => {
-        const val = localStorage.getItem(key);
-        const ids = { cf_url: 'cf-url', kintone_subdomain: 'kintone-subdomain', kintone_appid: 'kintone-appid' };
-        if (val) document.getElementById(ids[key]).value = val;
-      });
+  initDashboard();
+
+  // Tab buttons
+  TABS.forEach(t => {
+    document.getElementById('btn-' + t).addEventListener('click', () => switchTab(t));
+  });
+
+  // Keyboard nav for tabs
+  document.querySelector('[role="tablist"]').addEventListener('keydown', e => {
+    const idx = TABS.indexOf(document.querySelector('[aria-selected="true"]').id.replace('btn-', ''));
+    if (e.key === 'ArrowRight') switchTab(TABS[(idx + 1) % TABS.length]);
+    if (e.key === 'ArrowLeft')  switchTab(TABS[(idx - 1 + TABS.length) % TABS.length]);
+  });
+
+  // Search
+  document.getElementById('search-keys').addEventListener('input', e => initKintone(e.target.value));
+
+  // Period filter
+  document.getElementById('period-btns').addEventListener('click', e => {
+    const btn = e.target.closest('.period-btn');
+    if (!btn) return;
+    document.querySelectorAll('.period-btn').forEach(b => {
+      b.style.background = '#1e293b';
+      b.style.color = '#cbd5e1';
     });
-  </script>
+    btn.style.background = '#4f46e5';
+    btn.style.color = '#fff';
+  });
+
+  // Refresh button
+  document.getElementById('btn-refresh').addEventListener('click', () => {
+    const activeTab = document.querySelector('[role="tab"][aria-selected="true"]').id.replace('btn-', '');
+    switchTab(activeTab);
+    document.getElementById('last-updated').textContent =
+      '最終更新: ' + new Date().toLocaleString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+  });
+
+  // Detail button (delegated)
+  document.getElementById('keys-tbody').addEventListener('click', e => {
+    const btn = e.target.closest('.detail-btn');
+    if (btn) openModal(Number(btn.dataset.id));
+  });
+
+  // Modal close
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal')) closeModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !document.getElementById('modal').classList.contains('hidden')) closeModal();
+  });
+
+  // Settings save/load
+  document.getElementById('save-settings').addEventListener('click', () => {
+    localStorage.setItem('cf_url',            document.getElementById('cf-url').value);
+    localStorage.setItem('kintone_subdomain', document.getElementById('kintone-subdomain').value);
+    const btn = document.getElementById('save-settings');
+    btn.textContent = '保存しました ✓';
+    setTimeout(() => { btn.textContent = '設定を保存'; }, 1500);
+  });
+
+  const saved = { 'cf-url': 'cf_url', 'kintone-subdomain': 'kintone_subdomain' };
+  Object.entries(saved).forEach(([elId, key]) => {
+    const v = localStorage.getItem(key);
+    if (v) document.getElementById(elId).value = v;
+  });
+});
+</script>
 </body>
 </html>
