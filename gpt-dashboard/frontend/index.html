@@ -269,7 +269,203 @@
     </div>
   </div>
 
-  <script src="mock-data.js"></script>
-  <script src="app.js"></script>
+  <script>
+    const MOCK = {
+      summary: {
+        totalTokens: 4_823_150,
+        totalCost: 28.74,
+        totalRequests: 3_412,
+        avgLatency: 842,
+      },
+      daily: [
+        { date: '05/30', input: 210000, output: 98000, cost: 2.14 },
+        { date: '05/31', input: 380000, output: 142000, cost: 3.87 },
+        { date: '06/01', input: 295000, output: 115000, cost: 2.93 },
+        { date: '06/02', input: 520000, output: 198000, cost: 5.21 },
+        { date: '06/03', input: 170000, output: 72000, cost: 1.76 },
+        { date: '06/04', input: 445000, output: 168000, cost: 4.44 },
+        { date: '06/05', input: 310000, output: 119000, cost: 3.12 },
+      ],
+      models: [
+        { name: 'gpt-4o',        tokens: 2_100_000, cost: 14.70 },
+        { name: 'gpt-4o-mini',   tokens: 1_850_000, cost:  7.40 },
+        { name: 'gpt-4-turbo',   tokens:   520_000, cost:  5.20 },
+        { name: 'gpt-3.5-turbo', tokens:   353_150, cost:  1.44 },
+      ],
+      monthly: [
+        { month: '2026/01', cost: 18.40 },
+        { month: '2026/02', cost: 22.10 },
+        { month: '2026/03', cost: 15.80 },
+        { month: '2026/04', cost: 31.50 },
+        { month: '2026/05', cost: 26.30 },
+        { month: '2026/06', cost: 28.74 },
+      ],
+      apiKeys: [
+        { id: 1, name: '本番環境キー',     purpose: 'プロダクション', model: 'gpt-4o',        registered: '2025-12-01', status: 'active',   memo: 'メインサービス用' },
+        { id: 2, name: 'ステージングキー', purpose: 'テスト・検証',   model: 'gpt-4o-mini',   registered: '2026-01-15', status: 'active',   memo: 'QA環境で使用' },
+        { id: 3, name: '開発用キー（個人）', purpose: '開発',         model: 'gpt-3.5-turbo', registered: '2026-02-10', status: 'active',   memo: 'ローカル開発用' },
+        { id: 4, name: '旧プロジェクトキー', purpose: 'レガシー',     model: 'gpt-4-turbo',   registered: '2025-08-20', status: 'inactive', memo: '旧システム移行済み' },
+        { id: 5, name: 'バッチ処理キー',   purpose: 'データ処理',    model: 'gpt-4o-mini',   registered: '2026-03-05', status: 'active',   memo: '夜間バッチ処理用' },
+      ],
+    };
+
+    let usageChart, modelChart, monthlyChart, donutChart;
+
+    function fmt(n) {
+      if (n >= 1_000_000) return (n / 1_000_000).toFixed(2) + 'M';
+      if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
+      return n.toString();
+    }
+
+    function chartOptions() {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#94a3b8', boxWidth: 12 } } },
+        scales: {
+          x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(100,116,139,0.1)' } },
+          y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(100,116,139,0.1)' } },
+        },
+      };
+    }
+
+    function initDashboard() {
+      document.getElementById('stat-tokens').textContent   = fmt(MOCK.summary.totalTokens);
+      document.getElementById('stat-cost').textContent     = '$' + MOCK.summary.totalCost.toFixed(2);
+      document.getElementById('stat-requests').textContent = fmt(MOCK.summary.totalRequests);
+      document.getElementById('stat-latency').textContent  = MOCK.summary.avgLatency + 'ms';
+
+      const labels     = MOCK.daily.map(d => d.date);
+      const inputData  = MOCK.daily.map(d => d.input);
+      const outputData = MOCK.daily.map(d => d.output);
+
+      if (usageChart) usageChart.destroy();
+      usageChart = new Chart(document.getElementById('usageChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Input tokens',  data: inputData,  borderColor: '#818cf8', backgroundColor: 'rgba(129,140,248,0.15)', tension: 0.4, fill: true, pointRadius: 4 },
+            { label: 'Output tokens', data: outputData, borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.15)',  tension: 0.4, fill: true, pointRadius: 4 },
+          ],
+        },
+        options: chartOptions(),
+      });
+
+      if (modelChart) modelChart.destroy();
+      modelChart = new Chart(document.getElementById('modelChart'), {
+        type: 'bar',
+        data: {
+          labels: MOCK.models.map(m => m.name),
+          datasets: [{ label: 'トークン数', data: MOCK.models.map(m => m.tokens), backgroundColor: ['#818cf8','#34d399','#fb923c','#f472b6'], borderRadius: 6 }],
+        },
+        options: { ...chartOptions(), indexAxis: 'y' },
+      });
+    }
+
+    function initCost() {
+      if (monthlyChart) monthlyChart.destroy();
+      monthlyChart = new Chart(document.getElementById('monthlyChart'), {
+        type: 'bar',
+        data: {
+          labels: MOCK.monthly.map(m => m.month),
+          datasets: [{ label: 'コスト (USD)', data: MOCK.monthly.map(m => m.cost), backgroundColor: 'rgba(129,140,248,0.7)', borderColor: '#818cf8', borderWidth: 1, borderRadius: 6 }],
+        },
+        options: chartOptions(),
+      });
+
+      if (donutChart) donutChart.destroy();
+      donutChart = new Chart(document.getElementById('donutChart'), {
+        type: 'doughnut',
+        data: {
+          labels: MOCK.models.map(m => m.name),
+          datasets: [{ data: MOCK.models.map(m => m.cost), backgroundColor: ['#818cf8','#34d399','#fb923c','#f472b6'], borderWidth: 2, borderColor: '#1e2030' }],
+        },
+        options: { plugins: { legend: { labels: { color: '#94a3b8' } } } },
+      });
+    }
+
+    function initKintone(filterText = '') {
+      const tbody    = document.getElementById('keys-tbody');
+      const filtered = MOCK.apiKeys.filter(k =>
+        k.name.includes(filterText) || k.purpose.includes(filterText) || k.model.includes(filterText)
+      );
+      tbody.innerHTML = filtered.map(k => `
+        <tr class="border-b border-slate-700 hover:bg-slate-700/40 transition-colors">
+          <td class="px-4 py-3 font-medium text-slate-100">${k.name}</td>
+          <td class="px-4 py-3 text-slate-400">${k.purpose}</td>
+          <td class="px-4 py-3"><span class="px-2 py-0.5 rounded bg-slate-700 text-indigo-300 text-xs font-mono">${k.model}</span></td>
+          <td class="px-4 py-3 text-slate-400 text-sm">${k.registered}</td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-1 rounded-full text-xs font-semibold ${k.status === 'active' ? 'bg-emerald-900/60 text-emerald-400' : 'bg-slate-700 text-slate-400'}">
+              ${k.status === 'active' ? '有効' : '無効'}
+            </span>
+          </td>
+          <td class="px-4 py-3">
+            <button onclick="openModal(${k.id})" class="text-indigo-400 hover:text-indigo-300 text-sm transition-colors">詳細</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function openModal(id) {
+      const k = MOCK.apiKeys.find(k => k.id === id);
+      if (!k) return;
+      document.getElementById('modal-title').textContent = k.name;
+      document.getElementById('modal-body').innerHTML = `
+        <dl class="space-y-3 text-sm">
+          <div class="flex justify-between"><dt class="text-slate-400">用途</dt><dd class="text-slate-100">${k.purpose}</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-400">モデル</dt><dd class="font-mono text-indigo-300">${k.model}</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-400">登録日</dt><dd class="text-slate-100">${k.registered}</dd></div>
+          <div class="flex justify-between"><dt class="text-slate-400">ステータス</dt>
+            <dd><span class="px-2 py-0.5 rounded-full text-xs font-semibold ${k.status === 'active' ? 'bg-emerald-900/60 text-emerald-400' : 'bg-slate-700 text-slate-400'}">${k.status === 'active' ? '有効' : '無効'}</span></dd>
+          </div>
+          <div class="pt-2 border-t border-slate-700"><dt class="text-slate-400 mb-1">メモ</dt><dd class="text-slate-300">${k.memo}</dd></div>
+        </dl>
+      `;
+      document.getElementById('modal').classList.remove('hidden');
+      document.getElementById('modal').classList.add('flex');
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.add('hidden');
+      document.getElementById('modal').classList.remove('flex');
+    }
+
+    function switchTab(tab) {
+      ['dashboard', 'cost', 'kintone', 'settings'].forEach(t => {
+        document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
+        document.getElementById('btn-' + t).classList.toggle('tab-active', t === tab);
+      });
+      if (tab === 'dashboard') initDashboard();
+      if (tab === 'cost')      initCost();
+      if (tab === 'kintone')   initKintone();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initDashboard();
+
+      document.getElementById('search-keys').addEventListener('input', e => initKintone(e.target.value));
+
+      document.getElementById('modal').addEventListener('click', e => {
+        if (e.target === document.getElementById('modal')) closeModal();
+      });
+
+      document.getElementById('save-settings').addEventListener('click', () => {
+        localStorage.setItem('cf_url',             document.getElementById('cf-url').value);
+        localStorage.setItem('kintone_subdomain',  document.getElementById('kintone-subdomain').value);
+        localStorage.setItem('kintone_appid',      document.getElementById('kintone-appid').value);
+        const btn = document.getElementById('save-settings');
+        btn.textContent = '保存しました ✓';
+        setTimeout(() => btn.textContent = '設定を保存', 1500);
+      });
+
+      ['cf_url','kintone_subdomain','kintone_appid'].forEach(key => {
+        const val = localStorage.getItem(key);
+        const ids = { cf_url: 'cf-url', kintone_subdomain: 'kintone-subdomain', kintone_appid: 'kintone-appid' };
+        if (val) document.getElementById(ids[key]).value = val;
+      });
+    });
+  </script>
 </body>
 </html>
