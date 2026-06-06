@@ -879,8 +879,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.textContent = '取得中…';
     btn.disabled = true;
     try { await loadFromAPI(); } catch (_) { DATA = MOCK; }
-    const cur = document.querySelector('[aria-selected="true"]')?.id.replace('btn-', '') || 'dashboard';
-    switchTab(cur);
+    switchTab('dashboard');
     btn.textContent = '保存しました ✓';
     btn.disabled = false;
     setTimeout(() => { btn.textContent = '設定を保存'; }, 1500);
