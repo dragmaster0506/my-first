@@ -425,11 +425,13 @@
           <thead>
             <tr>
               <th>キー名</th>
-              <th>用途</th>
-              <th>モデル</th>
-              <th>登録日</th>
+              <th class="text-right">Inputトークン</th>
+              <th class="text-right">Input料金</th>
+              <th class="text-right">Outputトークン</th>
+              <th class="text-right">Output料金</th>
+              <th class="text-right">合計コスト</th>
+              <th>Kintoneアプリ</th>
               <th>ステータス</th>
-              <th></th>
             </tr>
           </thead>
           <tbody id="keys-tbody"></tbody>
@@ -552,31 +554,23 @@ async function loadFromAPI() {
   const now   = Math.floor(Date.now() / 1000);
   const start = now - 30 * 86400; // last 30 days
 
-  const [usageRes, costsRes] = await Promise.allSettled([
+  const [usageRes, costsRes, apiKeysRes] = await Promise.allSettled([
     fetch(`${base}/openai/usage?start_time=${start}&bucket_width=1d`).then(r => r.json()),
     fetch(`${base}/openai/costs?start_time=${start}&bucket_width=1d`).then(r => r.json()),
+    fetch(`${base}/openai/apikeys?start_time=${start}`).then(r => r.json()),
   ]);
 
-  const daily   = usageRes.status   === 'fulfilled' ? parseOpenAIUsage(usageRes.value)   : null;
-  const monthly = costsRes.status === 'fulfilled' ? parseOpenAICosts(costsRes.value) : null;
+  const daily   = usageRes.status   === 'fulfilled' ? parseOpenAIUsage(usageRes.value) : null;
+  const monthly = costsRes.status   === 'fulfilled' ? parseOpenAICosts(costsRes.value) : null;
+  const apiKeys = apiKeysRes.status === 'fulfilled' && apiKeysRes.value.apiKeys
+    ? apiKeysRes.value.apiKeys : null;
 
-  // Compute summary from live daily data
   let summary = MOCK.summary;
   if (daily) {
     const totalInput  = daily.reduce((s, d) => s + d.input,  0);
     const totalOutput = daily.reduce((s, d) => s + d.output, 0);
-    summary = { ...MOCK.summary, totalTokens: totalInput + totalOutput };
-  }
-
-  // Try kintone keys if app IDs are stored
-  const kintoneAppIds = localStorage.getItem('kintone_appid') || '';
-  let apiKeys = MOCK.apiKeys;
-  if (kintoneAppIds) {
-    try {
-      const kRes = await fetch(`${base}/kintone/keys?app=${encodeURIComponent(kintoneAppIds)}`);
-      const kJson = await kRes.json();
-      apiKeys = parseKintoneKeys(kJson) || MOCK.apiKeys;
-    } catch (_) { /* fall back to MOCK */ }
+    const totalReqs   = apiKeys ? apiKeys.reduce((s, k) => s + k.requests, 0) : MOCK.summary.totalRequests;
+    summary = { ...MOCK.summary, totalTokens: totalInput + totalOutput, totalRequests: totalReqs };
   }
 
   DATA = {
@@ -584,7 +578,7 @@ async function loadFromAPI() {
     summary,
     daily:   daily   || MOCK.daily,
     monthly: monthly || MOCK.monthly,
-    apiKeys,
+    apiKeys: apiKeys || MOCK.apiKeys,
   };
 }
 
@@ -760,18 +754,42 @@ function initCost() {
 // ─── API Keys ────────────────────────────────────────────────────────────────
 function initKintone(filter = '') {
   const q = filter.trim();
-  const filtered = DATA.apiKeys.filter(k => !q || k.name.includes(q) || k.purpose.includes(q) || k.model.includes(q));
+  const filtered = DATA.apiKeys.filter(k => !q || k.name.includes(q));
   document.getElementById('keys-count').textContent = filtered.length + ' 件';
-  document.getElementById('keys-tbody').innerHTML = filtered.map(k => `
-    <tr>
+  const kintoneMap = JSON.parse(localStorage.getItem('kintone_map') || '{}');
+  document.getElementById('keys-tbody').innerHTML = filtered.map(k => {
+    const registered = k.created
+      ? new Date(k.created * 1000).toISOString().slice(0, 10)
+      : (k.registered || '');
+    const inputCost  = estimateCost(k.inputTokens  || 0, 'input');
+    const outputCost = estimateCost(k.outputTokens || 0, 'output');
+    const totalCost  = inputCost + outputCost;
+    const kintoneApp = kintoneMap[k.id] || k.memo || '';
+    return `<tr>
       <td style="font-weight:600;color:#334155">${esc(k.name)}</td>
-      <td>${esc(k.purpose)}</td>
-      <td><span class="pill violet" style="font-family:monospace">${esc(k.model)}</span></td>
-      <td>${esc(k.registered)}</td>
+      <td class="text-right">${fmt(k.inputTokens  || 0)}</td>
+      <td class="text-right" style="color:#6366f1;font-weight:600">${usd(inputCost)}</td>
+      <td class="text-right">${fmt(k.outputTokens || 0)}</td>
+      <td class="text-right" style="color:#10b981;font-weight:600">${usd(outputCost)}</td>
+      <td class="text-right" style="font-weight:700">${usd(totalCost)}</td>
+      <td><input type="text" value="${esc(kintoneApp)}" placeholder="Kintoneアプリ名"
+        data-key-id="${esc(k.id)}"
+        style="border:1px solid #e2e8f0;border-radius:6px;padding:3px 8px;font-size:12px;width:130px;color:#334155"
+        onchange="saveKintoneApp(this)" /></td>
       <td>${statusBadge(k.status)}</td>
-      <td><button class="detail-btn" data-id="${k.id}" aria-label="${esc(k.name)}の詳細" style="color:#6366f1;font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;padding:4px 10px;border-radius:6px;transition:background .15s">詳細 →</button></td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
+}
+
+function estimateCost(tokens, type) {
+  const rate = type === 'input' ? 2.50 : 10.00;
+  return tokens / 1_000_000 * rate;
+}
+
+function saveKintoneApp(input) {
+  const map = JSON.parse(localStorage.getItem('kintone_map') || '{}');
+  map[input.dataset.keyId] = input.value;
+  localStorage.setItem('kintone_map', JSON.stringify(map));
 }
 
 // ─── Modal ───────────────────────────────────────────────────────────────────
@@ -784,7 +802,18 @@ function openModal(id) {
   document.getElementById('modal-title').textContent = k.name;
   const dl = document.getElementById('modal-body');
   dl.innerHTML = '';
-  [['用途', k.purpose], ['モデル', k.model], ['登録日', k.registered], ['ステータス', k.status === 'active' ? '有効' : '無効'], ['メモ', k.memo]].forEach(([label, val]) => {
+  const registered = k.created
+    ? new Date(k.created * 1000).toISOString().slice(0, 10)
+    : (k.registered || '');
+  const rows = [
+    ['登録日',          registered],
+    ['ステータス',      k.status === 'active' ? '有効' : '無効'],
+    ['Inputトークン',   fmt(k.inputTokens  || 0)],
+    ['Outputトークン',  fmt(k.outputTokens || 0)],
+    ['リクエスト数',    fmt(k.requests     || 0)],
+    ['推定コスト',      usd(estimateCost(k.inputTokens||0,'input') + estimateCost(k.outputTokens||0,'output'))],
+  ];
+  rows.forEach(([label, val]) => {
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;justify-content:space-between;align-items:start;gap:16px;padding:8px 0;border-bottom:1px solid #f1f5f9';
     const dt = document.createElement('dt'); dt.style.cssText = 'font-size:12px;color:#94a3b8;font-weight:500;white-space:nowrap'; dt.textContent = label;

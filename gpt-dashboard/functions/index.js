@@ -17,9 +17,10 @@ functions.http('api', async (req, res) => {
   const path = req.path || '/';
 
   try {
-    if (path === '/openai/usage') return await handleOpenAIUsage(req, res);
-    if (path === '/openai/costs') return await handleOpenAICosts(req, res);
-    if (path === '/kintone/keys') return await handleKintoneKeys(req, res);
+    if (path === '/openai/usage')   return await handleOpenAIUsage(req, res);
+    if (path === '/openai/costs')   return await handleOpenAICosts(req, res);
+    if (path === '/openai/apikeys') return await handleOpenAIApiKeys(req, res);
+    if (path === '/kintone/keys')   return await handleKintoneKeys(req, res);
     res.status(404).json({ error: 'Not found', path });
   } catch (err) {
     console.error(err);
@@ -70,6 +71,54 @@ async function handleOpenAICosts(req, res) {
 
   const body = await upstream.json();
   res.status(upstream.status).json(body);
+}
+
+// ─── /openai/apikeys ─────────────────────────────────────────────────────────
+// Returns org API key list merged with usage (input/output tokens) per key.
+// Query params: start_time, end_time (Unix seconds)
+async function handleOpenAIApiKeys(req, res) {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'OPENAI_API_KEY not configured' });
+
+  const headers = { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' };
+
+  const now   = Math.floor(Date.now() / 1000);
+  const start = req.query.start_time || (now - 30 * 86400);
+  const end   = req.query.end_time   || now;
+
+  // Fetch API key list and usage in parallel
+  const [keysRes, usageRes] = await Promise.all([
+    fetch('https://api.openai.com/v1/organization/api_keys?limit=100', { headers }),
+    fetch(`https://api.openai.com/v1/organization/usage/completions?start_time=${start}&end_time=${end}&bucket_width=1d&group_by=api_key_id&limit=180`, { headers }),
+  ]);
+
+  const [keysJson, usageJson] = await Promise.all([keysRes.json(), usageRes.json()]);
+
+  // Aggregate tokens per api_key_id from usage buckets
+  const tokensByKey = {};
+  for (const bucket of (usageJson.data || [])) {
+    for (const r of (bucket.results || [])) {
+      const kid = r.api_key_id || '__unknown__';
+      if (!tokensByKey[kid]) tokensByKey[kid] = { inputTokens: 0, outputTokens: 0, requests: 0 };
+      tokensByKey[kid].inputTokens  += r.input_tokens  || 0;
+      tokensByKey[kid].outputTokens += r.output_tokens || 0;
+      tokensByKey[kid].requests     += r.num_model_requests || 0;
+    }
+  }
+
+  // Merge with key metadata
+  const apiKeys = (keysJson.data || []).map(k => ({
+    id:           k.id,
+    name:         k.name,
+    created:      k.created_at,
+    lastUsed:     k.last_used_at,
+    status:       k.redacted_value ? 'active' : 'unknown',
+    inputTokens:  (tokensByKey[k.id] || {}).inputTokens  || 0,
+    outputTokens: (tokensByKey[k.id] || {}).outputTokens || 0,
+    requests:     (tokensByKey[k.id] || {}).requests     || 0,
+  }));
+
+  res.json({ apiKeys, period: { start, end } });
 }
 
 // ─── /kintone/keys ───────────────────────────────────────────────────────────
