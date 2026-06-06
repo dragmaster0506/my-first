@@ -94,6 +94,11 @@ async function handleOpenAIApiKeys(req, res) {
 
   const [keysJson, usageJson] = await Promise.all([keysRes.json(), usageRes.json()]);
 
+  // デバッグ: OpenAIからの生レスポンスを確認
+  if (!keysJson.data || keysJson.data.length === 0) {
+    return res.json({ debug: true, keysJson, usageJson });
+  }
+
   // Aggregate tokens per api_key_id from usage buckets
   const tokensByKey = {};
   for (const bucket of (usageJson.data || [])) {
