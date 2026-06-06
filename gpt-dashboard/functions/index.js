@@ -86,20 +86,12 @@ async function handleOpenAIApiKeys(req, res) {
   const start = req.query.start_time || (now - 30 * 86400);
   const end   = req.query.end_time   || now;
 
-  // Fetch API key list and usage in parallel
-  const [keysRes, usageRes] = await Promise.all([
-    fetch('https://api.openai.com/v1/organization/api_keys?limit=100', { headers }),
-    fetch(`https://api.openai.com/v1/organization/usage/completions?start_time=${start}&end_time=${end}&bucket_width=1d&group_by=api_key_id&limit=180`, { headers }),
-  ]);
+  // Usage grouped by api_key_id (max 31 days per request)
+  const url = `https://api.openai.com/v1/organization/usage/completions?start_time=${start}&end_time=${end}&bucket_width=1d&group_by=api_key_id&limit=31`;
+  const usageRes  = await fetch(url, { headers });
+  const usageJson = await usageRes.json();
 
-  const [keysJson, usageJson] = await Promise.all([keysRes.json(), usageRes.json()]);
-
-  // デバッグ: OpenAIからの生レスポンスを確認
-  if (!keysJson.data || keysJson.data.length === 0) {
-    return res.json({ debug: true, keysJson, usageJson });
-  }
-
-  // Aggregate tokens per api_key_id from usage buckets
+  // Aggregate tokens per api_key_id
   const tokensByKey = {};
   for (const bucket of (usageJson.data || [])) {
     for (const r of (bucket.results || [])) {
@@ -111,17 +103,13 @@ async function handleOpenAIApiKeys(req, res) {
     }
   }
 
-  // Merge with key metadata
-  const apiKeys = (keysJson.data || []).map(k => ({
-    id:           k.id,
-    name:         k.name,
-    created:      k.created_at,
-    lastUsed:     k.last_used_at,
-    status:       k.redacted_value ? 'active' : 'unknown',
-    inputTokens:  (tokensByKey[k.id] || {}).inputTokens  || 0,
-    outputTokens: (tokensByKey[k.id] || {}).outputTokens || 0,
-    requests:     (tokensByKey[k.id] || {}).requests     || 0,
-  }));
+  // Return as array sorted by total tokens desc
+  const apiKeys = Object.entries(tokensByKey).map(([id, stats]) => ({
+    id,
+    name: id, // キー名は手動設定
+    status: 'active',
+    ...stats,
+  })).sort((a, b) => (b.inputTokens + b.outputTokens) - (a.inputTokens + a.outputTokens));
 
   res.json({ apiKeys, period: { start, end } });
 }
