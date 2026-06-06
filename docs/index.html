@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GPT API ダッシュボード</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, body { font-family: 'Inter', system-ui, sans-serif; }
+    body { background: #f5f7ff; color: #1e293b; }
+
+    .hidden { display: none !important; }
+
+    /* Sidebar */
+    .sidebar { width: 220px; min-height: 100vh; background: #fff; border-right: 1px solid #e8eaf6; position: fixed; top: 0; left: 0; display: flex; flex-direction: column; z-index: 30; transition: transform .2s ease; }
+    .sidebar.collapsed { transform: translateX(-100%); }
+    .main-content { margin-left: 220px; min-height: 100vh; transition: margin-left .2s ease; }
+    .main-content.full { margin-left: 0; }
+
+    /* Hamburger */
+    .hamburger { display: none; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 10px; border: 1.5px solid #e2e8f0; background: #fff; cursor: pointer; }
+    .hamburger:hover { background: #f0f4ff; border-color: #6366f1; }
+
+    /* Sidebar overlay (mobile) */
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.3); z-index: 25; }
+
+    /* Nav items */
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 12px; margin: 2px 8px; font-size: 14px; font-weight: 500; color: #64748b; cursor: pointer; transition: all .15s; border: none; background: none; width: calc(100% - 16px); text-align: left; }
+    .nav-item:hover { background: #f0f4ff; color: #4f46e5; }
+    .nav-item:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
+    .nav-item.active { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; box-shadow: 0 4px 12px rgba(99,102,241,.35); }
+    .nav-item.active .nav-icon { color: #fff; }
+    .nav-icon { width: 18px; height: 18px; flex-shrink: 0; }
+
+    /* Cards */
+    .card { background: #fff; border-radius: 16px; border: 1px solid #e8eaf6; box-shadow: 0 1px 4px rgba(99,102,241,.06); }
+    .stat-card { background: #fff; border-radius: 16px; border: 1px solid #e8eaf6; padding: 20px; box-shadow: 0 1px 4px rgba(99,102,241,.06); position: relative; overflow: hidden; }
+    .stat-card::before { content: ''; position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; border-radius: 50%; opacity: .08; }
+    .stat-card.violet::before { background: #6366f1; }
+    .stat-card.emerald::before { background: #10b981; }
+    .stat-card.amber::before  { background: #f59e0b; }
+    .stat-card.sky::before    { background: #0ea5e9; }
+
+    /* Icon badges */
+    .icon-badge { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .icon-badge.violet { background: linear-gradient(135deg,#6366f1,#8b5cf6); }
+    .icon-badge.emerald { background: linear-gradient(135deg,#10b981,#34d399); }
+    .icon-badge.amber   { background: linear-gradient(135deg,#f59e0b,#fbbf24); }
+    .icon-badge.sky     { background: linear-gradient(135deg,#0ea5e9,#38bdf8); }
+
+    /* Pill badge */
+    .pill { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 11px; font-weight: 600; }
+    .pill.green  { background: #dcfce7; color: #16a34a; }
+    .pill.red    { background: #fee2e2; color: #dc2626; }
+    .pill.violet { background: #ede9fe; color: #7c3aed; }
+    .pill.slate  { background: #f1f5f9; color: #64748b; }
+
+    /* Table */
+    .data-table { width: 100%; font-size: 13.5px; border-collapse: collapse; }
+    .data-table th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid #f1f5f9; background: #fafbff; }
+    .data-table th:first-child { border-radius: 8px 0 0 0; }
+    .data-table th:last-child  { border-radius: 0 8px 0 0; }
+    .data-table td { padding: 12px 16px; border-bottom: 1px solid #f8fafc; color: #334155; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: #fafbff; }
+    .data-table .text-right { text-align: right; }
+
+    /* Search input */
+    .search-input { padding: 8px 14px 8px 36px; border-radius: 12px; border: 1.5px solid #e2e8f0; font-size: 13px; background: #fff; color: #334155; outline: none; width: 240px; transition: border-color .15s; }
+    .search-input:focus { border-color: #6366f1; }
+
+    /* Period button */
+    .period-btn { padding: 5px 14px; border-radius: 12px; font-size: 13px; font-weight: 500; border: 1.5px solid #e2e8f0; background: #fff; color: #64748b; cursor: pointer; transition: all .15s; }
+    .period-btn:hover { border-color: #6366f1; color: #4f46e5; }
+    .period-btn:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
+    .period-btn.active { background: #6366f1; color: #fff; border-color: #6366f1; box-shadow: 0 2px 8px rgba(99,102,241,.3); }
+
+    /* Settings input */
+    .settings-input { width: 100%; padding: 9px 12px; border-radius: 12px; border: 1.5px solid #e2e8f0; font-size: 13px; color: #334155; outline: none; transition: border-color .15s; }
+    .settings-input:focus { border-color: #6366f1; }
+
+    /* Modal */
+    .modal-backdrop { background: rgba(15,23,42,.35); backdrop-filter: blur(4px); }
+    .modal-card { background: #fff; border-radius: 20px; box-shadow: 0 20px 60px rgba(15,23,42,.18); max-width: 400px; width: calc(100% - 32px); padding: 28px; }
+
+    /* External links in sidebar */
+    .ext-link { display:flex; align-items:center; gap:8px; padding:7px 8px; border-radius:8px; font-size:12px; font-weight:500; color:#64748b; text-decoration:none; transition:all .15s; margin:1px 0; }
+    .ext-link:hover { background:#f0f4ff; color:#4f46e5; }
+    .ext-link:focus-visible { outline:2px solid #6366f1; outline-offset:2px; }
+    .ext-icon { width:14px; height:14px; flex-shrink:0; }
+    .ext-arrow { width:11px; height:11px; margin-left:auto; opacity:0; transition:opacity .15s; flex-shrink:0; }
+    .ext-link:hover .ext-arrow { opacity:1; }
+
+    /* Trend chip (colored) vs context label (plain text) */
+    .trend-chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 600; background: #dcfce7; color: #16a34a; }
+    .trend-chip.down { background: #fee2e2; color: #dc2626; }
+    .ctx-label { font-size: 11px; color: #94a3b8; font-weight: 500; }
+
+    /* Refresh button hover/active */
+    #btn-refresh:hover { opacity: .88; }
+    #btn-refresh:active { transform: translateY(1px); }
+    #btn-refresh:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; }
+
+    /* Detail button */
+    .detail-btn:hover { background: #ede9fe !important; }
+    .detail-btn:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; border-radius: 6px; }
+
+    /* Modal close hover */
+    #modal-close:hover { background: #f0f4ff !important; color: #6366f1 !important; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    /* ── Responsive ───────────────────────────────── */
+    .stat-grid  { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+    .chart-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; }
+
+    @media (max-width: 1024px) {
+      .stat-grid  { grid-template-columns: repeat(2,1fr); }
+    }
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(15,23,42,.15); }
+      .sidebar-overlay { display: block; }
+      .main-content { margin-left: 0; }
+      .hamburger { display: flex; }
+      .stat-grid  { grid-template-columns: repeat(2,1fr); }
+      .chart-grid { grid-template-columns: 1fr; }
+      main { padding: 16px !important; }
+      header { padding: 12px 16px !important; }
+    }
+    @media (max-width: 480px) {
+      .stat-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Trend chip */
+    .trend-up   { color: #16a34a; font-size: 11px; font-weight: 600; }
+    .trend-down { color: #dc2626; font-size: 11px; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     SIDEBAR
+════════════════════════════════════════════ -->
+<aside class="sidebar">
+  <!-- Logo -->
+  <div style="padding:20px 16px 12px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      </div>
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#1e293b;line-height:1.2">GPT Monitor</div>
+        <div style="font-size:10px;color:#94a3b8;font-weight:500">API Dashboard</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="height:1px;background:#f1f5f9;margin:4px 16px 12px"></div>
+
+  <!-- Nav -->
+  <nav role="tablist" style="flex:1;padding:0 0 8px">
+    <button id="btn-dashboard" role="tab" aria-selected="true"  aria-controls="tab-dashboard" class="nav-item active">
+      <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+      ダッシュボード
+    </button>
+    <button id="btn-cost" role="tab" aria-selected="false" aria-controls="tab-cost" class="nav-item">
+      <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      コスト分析
+    </button>
+    <button id="btn-kintone" role="tab" aria-selected="false" aria-controls="tab-kintone" class="nav-item">
+      <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+      APIキー一覧
+    </button>
+    <button id="btn-settings" role="tab" aria-selected="false" aria-controls="tab-settings" class="nav-item">
+      <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+      設定
+    </button>
+  </nav>
+
+  <!-- Quick Links -->
+  <div style="padding:8px 8px 4px;border-top:1px solid #f1f5f9">
+    <div style="font-size:10px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;padding:6px 8px 4px">OpenAI 管理画面</div>
+    <a href="https://platform.openai.com/usage"           target="_blank" rel="noopener" class="ext-link">
+      <svg class="ext-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      使用量
+      <svg class="ext-arrow" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+    </a>
+    <a href="https://platform.openai.com/api-keys"        target="_blank" rel="noopener" class="ext-link">
+      <svg class="ext-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+      APIキー管理
+      <svg class="ext-arrow" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+    </a>
+    <a href="https://platform.openai.com/account/billing/overview" target="_blank" rel="noopener" class="ext-link">
+      <svg class="ext-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+      請求・支払い
+      <svg class="ext-arrow" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+    </a>
+    <a href="https://platform.openai.com/playground"      target="_blank" rel="noopener" class="ext-link">
+      <svg class="ext-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+      Playground
+      <svg class="ext-arrow" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+    </a>
+    <a href="https://platform.openai.com/docs"            target="_blank" rel="noopener" class="ext-link">
+      <svg class="ext-icon" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      ドキュメント
+      <svg class="ext-arrow" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+    </a>
+  </div>
+
+  <!-- Footer -->
+  <div style="padding:10px 16px 14px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <div style="width:7px;height:7px;border-radius:50%;background:#10b981;flex-shrink:0"></div>
+      <span style="font-size:11px;color:#64748b">本番環境キー 接続中</span>
+    </div>
+    <div id="last-updated" style="font-size:10px;color:#94a3b8;margin-top:3px"></div>
+  </div>
+</aside>
+
+<!-- ════════════════════════════════════════════
+     MAIN
+════════════════════════════════════════════ -->
+<div class="main-content">
+
+  <!-- Sidebar overlay (mobile) -->
+  <div id="sidebar-overlay" class="sidebar-overlay hidden" aria-hidden="true"></div>
+
+  <!-- Topbar -->
+  <header style="background:#fff;border-bottom:1px solid #f1f5f9;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button id="hamburger" class="hamburger" aria-label="メニューを開く" aria-expanded="false">
+        <svg width="16" height="16" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="#64748b" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <div>
+        <h1 id="page-title" style="font-size:18px;font-weight:700;color:#1e293b">ダッシュボード</h1>
+        <p id="page-sub" style="font-size:12px;color:#94a3b8;margin-top:1px">2026年6月 · 利用状況の概要</p>
+      </div>
+    </div>
+    <button id="btn-refresh" aria-label="データを更新" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:13px;font-weight:600;border:none;cursor:pointer;box-shadow:0 4px 12px rgba(99,102,241,.35);transition:opacity .15s">
+      <svg width="14" height="14" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      更新
+    </button>
+  </header>
+
+  <main style="padding:24px 28px">
+
+    <!-- ── Tab: Dashboard ─────────────────────────── -->
+    <div id="tab-dashboard" role="tabpanel" aria-labelledby="btn-dashboard">
+
+      <!-- Stat cards -->
+      <div class="stat-grid">
+        <div class="stat-card violet">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+            <div class="icon-badge violet">
+              <svg width="18" height="18" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+            <span class="trend-chip">▲ 12%</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">今月の総トークン</div>
+          <div id="stat-tokens" style="font-size:26px;font-weight:700;color:#1e293b">—</div>
+        </div>
+
+        <div class="stat-card emerald">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+            <div class="icon-badge emerald">
+              <svg width="18" height="18" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <span class="ctx-label">予算 $50</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">今月のコスト</div>
+          <div id="stat-cost" style="font-size:26px;font-weight:700;color:#1e293b">—</div>
+        </div>
+
+        <div class="stat-card amber">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+            <div class="icon-badge amber">
+              <svg width="18" height="18" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+            </div>
+            <span class="ctx-label">今月累計</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">リクエスト数</div>
+          <div id="stat-requests" style="font-size:26px;font-weight:700;color:#1e293b">—</div>
+        </div>
+
+        <div class="stat-card sky">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px">
+            <div class="icon-badge sky">
+              <svg width="18" height="18" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="#fff" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <span class="ctx-label">直近7日間</span>
+          </div>
+          <div style="font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">平均レイテンシ</div>
+          <div id="stat-latency" style="font-size:26px;font-weight:700;color:#1e293b">—</div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="chart-grid">
+        <div class="card" style="padding:20px">
+          <div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:16px">直近7日間のトークン使用量</div>
+          <div style="height:200px"><canvas id="usageChart"></canvas></div>
+        </div>
+        <div class="card" style="padding:20px">
+          <div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:16px">モデル別使用量</div>
+          <div style="height:200px"><canvas id="modelChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- APIキー別使用量テーブル -->
+      <div class="card" style="overflow:hidden">
+        <div style="padding:16px 20px;border-bottom:1px solid #f1f5f9;font-size:14px;font-weight:600;color:#1e293b">
+          APIキー別使用量（今月）
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>キー名</th>
+                <th class="text-right">Input tokens</th>
+                <th class="text-right">Input コスト</th>
+                <th class="text-right">Output tokens</th>
+                <th class="text-right">Output コスト</th>
+                <th class="text-right">合計コスト</th>
+              </tr>
+            </thead>
+            <tbody id="key-usage-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab: Cost ──────────────────────────────── -->
+    <div id="tab-cost" role="tabpanel" aria-labelledby="btn-cost" class="hidden">
+
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
+        <span style="font-size:13px;color:#64748b">期間:</span>
+        <div id="period-btns" style="display:flex;gap:6px">
+          <button data-period="30" class="period-btn active">30日</button>
+          <button data-period="7"  class="period-btn">7日</button>
+        </div>
+      </div>
+
+      <div class="chart-grid">
+        <div class="card" style="padding:20px">
+          <div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:16px">月別コスト推移</div>
+          <div style="height:220px"><canvas id="monthlyChart"></canvas></div>
+        </div>
+        <div class="card" style="padding:20px">
+          <div style="font-size:14px;font-weight:600;color:#1e293b;margin-bottom:16px">モデル別コスト内訳</div>
+          <div style="height:220px"><canvas id="donutChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- APIキー別詳細 -->
+      <div class="card" style="overflow:hidden;margin-bottom:20px">
+        <div style="padding:16px 20px;border-bottom:1px solid #f1f5f9;font-size:14px;font-weight:600;color:#1e293b">
+          APIキー別使用量詳細
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>キー名</th>
+                <th class="text-right">Input tokens</th>
+                <th class="text-right">Input コスト</th>
+                <th class="text-right">Output tokens</th>
+                <th class="text-right">Output コスト</th>
+                <th class="text-right">合計コスト</th>
+                <th class="text-right">割合</th>
+              </tr>
+            </thead>
+            <tbody id="key-cost-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Kintone Apps -->
+      <div class="card" style="overflow:hidden">
+        <div style="padding:16px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:14px;font-weight:600;color:#1e293b">使用中の Kintone アプリ</span>
+          <span id="kintone-apps-count" class="pill violet"></span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>アプリ名</th>
+                <th>用途</th>
+                <th class="text-right">レコード数</th>
+                <th>連携APIキー</th>
+                <th>ステータス</th>
+              </tr>
+            </thead>
+            <tbody id="kintone-apps-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tab: API Keys ──────────────────────────── -->
+    <div id="tab-kintone" role="tabpanel" aria-labelledby="btn-kintone" class="hidden">
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#64748b">
+          <span style="width:7px;height:7px;border-radius:50%;background:#10b981;flex-shrink:0" aria-hidden="true"></span>
+          Kintone 連携済み &nbsp;·&nbsp;
+          <span id="keys-count"></span>
+        </div>
+        <div style="position:relative">
+          <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none" width="14" height="14" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="#94a3b8" stroke-width="2"><circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/></svg>
+          <label class="sr-only" for="search-keys">APIキーを検索</label>
+          <input id="search-keys" type="search" placeholder="キー名・用途・モデルで検索..." class="search-input" />
+        </div>
+      </div>
+
+      <div class="card" style="overflow:hidden">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>キー名</th>
+              <th>用途</th>
+              <th>モデル</th>
+              <th>登録日</th>
+              <th>ステータス</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="keys-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Tab: Settings ──────────────────────────── -->
+    <div id="tab-settings" role="tabpanel" aria-labelledby="btn-settings" class="hidden">
+      <div style="max-width:520px;display:flex;flex-direction:column;gap:16px">
+
+        <div class="card" style="padding:24px">
+          <div style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:4px">Cloud Function 設定</div>
+          <div style="font-size:12px;color:#94a3b8;margin-bottom:16px">バックエンドプロキシのエンドポイントURLを入力してください</div>
+          <label for="cf-url" style="display:block;font-size:12px;font-weight:500;color:#64748b;margin-bottom:6px">Cloud Function URL</label>
+          <input id="cf-url" type="url" placeholder="https://asia-northeast1-xxx.cloudfunctions.net/gpt-dashboard-proxy" class="settings-input" />
+        </div>
+
+        <div class="card" style="padding:24px">
+          <div style="font-size:15px;font-weight:600;color:#1e293b;margin-bottom:4px">Kintone 設定</div>
+          <div style="font-size:12px;color:#94a3b8;margin-bottom:16px">サブドメインを設定するとCloud Function経由でアプリ情報を自動取得します</div>
+          <label for="kintone-subdomain" style="display:block;font-size:12px;font-weight:500;color:#64748b;margin-bottom:6px">サブドメイン</label>
+          <div style="display:flex;align-items:center">
+            <input id="kintone-subdomain" type="text" placeholder="yourcompany" class="settings-input" style="border-radius:10px 0 0 10px;border-right:none" />
+            <span style="padding:9px 12px;border:1.5px solid #e2e8f0;border-left:none;border-radius:0 10px 10px 0;font-size:13px;color:#94a3b8;background:#f8fafc">.cybozu.com</span>
+          </div>
+          <label for="kintone-appid" style="display:block;font-size:12px;font-weight:500;color:#64748b;margin-top:12px;margin-bottom:6px">アプリID（カンマ区切りで複数指定可）</label>
+          <input id="kintone-appid" type="text" placeholder="1,2,3" class="settings-input" style="width:100%;border-radius:10px" />
+        </div>
+
+        <button id="save-settings" style="padding:11px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:14px;font-weight:600;border:none;cursor:pointer;box-shadow:0 4px 14px rgba(99,102,241,.35);transition:opacity .15s">
+          設定を保存
+        </button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ════════════════════════════════════════════
+     MODAL
+════════════════════════════════════════════ -->
+<div id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"
+  class="hidden modal-backdrop fixed inset-0 z-50 items-center justify-center"
+  style="display:none">
+  <div class="modal-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <h3 id="modal-title" style="font-size:16px;font-weight:700;color:#1e293b"></h3>
+      <button id="modal-close" aria-label="モーダルを閉じる" style="width:32px;height:32px;border-radius:8px;background:#f8fafc;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#64748b;transition:background .15s">
+        <svg width="16" height="16" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <dl id="modal-body" class="space-y-3 text-sm"></dl>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SCRIPT
+════════════════════════════════════════════ -->
+<script>
+// ─── API layer ────────────────────────────────────────────────────────────────
+// DATA is the live dataset. Starts as MOCK; overwritten by loadFromAPI() if CF URL is set.
+let DATA;
+
+function cfUrl() { return (localStorage.getItem('cf_url') || '').replace(/\/$/, ''); }
+
+// Map OpenAI usage/costs response → MOCK-shaped objects for chart rendering
+function parseOpenAIUsage(raw) {
+  if (!raw || !raw.data) return null;
+  const daily = [];
+  for (const bucket of raw.data) {
+    const date = new Date(bucket.start_time * 1000);
+    const label = `${String(date.getMonth()+1).padStart(2,'0')}/${String(date.getDate()).padStart(2,'0')}`;
+    let input = 0, output = 0;
+    for (const r of (bucket.results || [])) {
+      input  += r.input_tokens  || 0;
+      output += r.output_tokens || 0;
+    }
+    daily.push({ date: label, input, output });
+  }
+  return daily;
+}
+
+function parseOpenAICosts(raw) {
+  if (!raw || !raw.data) return null;
+  // group by month
+  const byMonth = {};
+  for (const bucket of raw.data) {
+    const date = new Date(bucket.start_time * 1000);
+    const key  = `${date.getFullYear()}/${String(date.getMonth()+1).padStart(2,'0')}`;
+    byMonth[key] = (byMonth[key] || 0) + (bucket.amount?.value || 0);
+  }
+  return Object.entries(byMonth).sort(([a],[b]) => a.localeCompare(b)).map(([month, cost]) => ({ month, cost: Math.round(cost * 100) / 100 }));
+}
+
+function parseKintoneKeys(raw) {
+  if (!raw || !raw.apps) return null;
+  const apiKeys = [];
+  let id = 1;
+  for (const app of raw.apps) {
+    for (const rec of (app.records || [])) {
+      apiKeys.push({
+        id: id++,
+        name:       rec['name']?.value       || rec['キー名前']?.value    || `App${app.appId}-${id}`,
+        purpose:    rec['purpose']?.value    || rec['用途']?.value        || '',
+        model:      rec['model']?.value      || rec['モデル']?.value      || '',
+        registered: rec['registered']?.value || rec['登録日']?.value      || '',
+        status:     rec['status']?.value     || rec['ステータス']?.value   || 'active',
+        memo:       rec['memo']?.value       || rec['メモ']?.value        || '',
+      });
+    }
+  }
+  return apiKeys.length ? apiKeys : null;
+}
+
+async function loadFromAPI() {
+  const base = cfUrl();
+  if (!base) { DATA = MOCK; return; }
+
+  const now   = Math.floor(Date.now() / 1000);
+  const start = now - 30 * 86400; // last 30 days
+
+  const [usageRes, costsRes] = await Promise.allSettled([
+    fetch(`${base}/openai/usage?start_time=${start}&bucket_width=1d`).then(r => r.json()),
+    fetch(`${base}/openai/costs?start_time=${start}&bucket_width=1d`).then(r => r.json()),
+  ]);
+
+  const daily   = usageRes.status   === 'fulfilled' ? parseOpenAIUsage(usageRes.value)   : null;
+  const monthly = costsRes.status === 'fulfilled' ? parseOpenAICosts(costsRes.value) : null;
+
+  // Compute summary from live daily data
+  let summary = MOCK.summary;
+  if (daily) {
+    const totalInput  = daily.reduce((s, d) => s + d.input,  0);
+    const totalOutput = daily.reduce((s, d) => s + d.output, 0);
+    summary = { ...MOCK.summary, totalTokens: totalInput + totalOutput };
+  }
+
+  // Try kintone keys if app IDs are stored
+  const kintoneAppIds = localStorage.getItem('kintone_appid') || '';
+  let apiKeys = MOCK.apiKeys;
+  if (kintoneAppIds) {
+    try {
+      const kRes = await fetch(`${base}/kintone/keys?app=${encodeURIComponent(kintoneAppIds)}`);
+      const kJson = await kRes.json();
+      apiKeys = parseKintoneKeys(kJson) || MOCK.apiKeys;
+    } catch (_) { /* fall back to MOCK */ }
+  }
+
+  DATA = {
+    ...MOCK,
+    summary,
+    daily:   daily   || MOCK.daily,
+    monthly: monthly || MOCK.monthly,
+    apiKeys,
+  };
+}
+
+// ─── Mock Data ───────────────────────────────────────────────────────────────
+const MOCK = {
+  summary: { totalTokens: 4_823_150, totalCost: 28.74, totalRequests: 3_412, avgLatency: 842 },
+  daily: [
+    { date:'05/30', input:210000, output: 98000 },
+    { date:'05/31', input:380000, output:142000 },
+    { date:'06/01', input:295000, output:115000 },
+    { date:'06/02', input:520000, output:198000 },
+    { date:'06/03', input:170000, output: 72000 },
+    { date:'06/04', input:445000, output:168000 },
+    { date:'06/05', input:310000, output:119000 },
+  ],
+  models: [
+    { name:'gpt-4o',        tokens:2_100_000, cost:14.70 },
+    { name:'gpt-4o-mini',   tokens:1_850_000, cost: 7.40 },
+    { name:'gpt-4-turbo',   tokens:  520_000, cost: 5.20 },
+    { name:'gpt-3.5-turbo', tokens:  353_150, cost: 1.44 },
+  ],
+  monthly: [
+    { month:'2026/01', cost:18.40 },
+    { month:'2026/02', cost:22.10 },
+    { month:'2026/03', cost:15.80 },
+    { month:'2026/04', cost:31.50 },
+    { month:'2026/05', cost:26.30 },
+    { month:'2026/06', cost:28.74 },
+  ],
+  keyUsage: [
+    { name:'本番環境キー',       inputTokens:1_950_000, outputTokens: 720_000, inputCost:9.75, outputCost:7.20 },
+    { name:'ステージングキー',   inputTokens:  840_000, outputTokens: 310_000, inputCost:1.68, outputCost:1.55 },
+    { name:'開発用キー（個人）', inputTokens:  420_000, outputTokens: 158_000, inputCost:0.42, outputCost:0.79 },
+    { name:'バッチ処理キー',     inputTokens:  215_000, outputTokens:  82_000, inputCost:0.22, outputCost:0.41 },
+  ],
+  kintoneApps: [
+    { name:'顧客問い合わせ管理', purpose:'チャットボット応答',    records:1240, linkedKey:'本番環境キー',      status:'active'   },
+    { name:'社内Q&Aナレッジ',   purpose:'RAG・文書検索',         records: 380, linkedKey:'本番環境キー',      status:'active'   },
+    { name:'翻訳依頼フォーム',   purpose:'多言語翻訳自動化',      records: 892, linkedKey:'ステージングキー',  status:'active'   },
+    { name:'議事録自動生成',     purpose:'音声→テキスト要約',     records: 156, linkedKey:'バッチ処理キー',    status:'active'   },
+    { name:'旧CRMシステム連携',  purpose:'データ移行（完了済み）', records:3501, linkedKey:'旧プロジェクトキー', status:'inactive' },
+  ],
+  apiKeys: [
+    { id:1, name:'本番環境キー',       purpose:'プロダクション', model:'gpt-4o',        registered:'2025-12-01', status:'active',   memo:'メインサービス用' },
+    { id:2, name:'ステージングキー',   purpose:'テスト・検証',   model:'gpt-4o-mini',   registered:'2026-01-15', status:'active',   memo:'QA環境で使用' },
+    { id:3, name:'開発用キー（個人）', purpose:'開発',           model:'gpt-3.5-turbo', registered:'2026-02-10', status:'active',   memo:'ローカル開発用' },
+    { id:4, name:'旧プロジェクトキー', purpose:'レガシー',       model:'gpt-4-turbo',   registered:'2025-08-20', status:'inactive', memo:'旧システム移行済み' },
+    { id:5, name:'バッチ処理キー',     purpose:'データ処理',     model:'gpt-4o-mini',   registered:'2026-03-05', status:'active',   memo:'夜間バッチ処理用' },
+  ],
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+const fmt = n => n >= 1_000_000 ? (n/1_000_000).toFixed(2)+'M' : n >= 1_000 ? (n/1_000).toFixed(1)+'K' : String(n);
+const usd = n => '$'+n.toFixed(2);
+const esc = s => { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; };
+const PALETTE = ['#6366f1','#10b981','#f59e0b','#0ea5e9','#ec4899'];
+
+function statusBadge(s) {
+  return s === 'active'
+    ? '<span class="pill green">有効</span>'
+    : '<span class="pill slate">無効</span>';
+}
+
+// ─── Charts ──────────────────────────────────────────────────────────────────
+const charts = {};
+function makeChart(id, config) {
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), config);
+}
+
+function lightOpts(extra = {}) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: '#64748b', boxWidth: 11, font: { size: 11 } } } },
+    scales: {
+      x: { ticks:{ color:'#94a3b8', font:{size:11} }, grid:{ color:'#f1f5f9' } },
+      y: { ticks:{ color:'#94a3b8', font:{size:11} }, grid:{ color:'#f1f5f9' } },
+    },
+    ...extra,
+  };
+}
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+function initDashboard() {
+  const s = DATA.summary;
+  document.getElementById('stat-tokens').textContent   = fmt(s.totalTokens);
+  document.getElementById('stat-cost').textContent     = usd(s.totalCost);
+  document.getElementById('stat-requests').textContent = fmt(s.totalRequests);
+  document.getElementById('stat-latency').textContent  = s.avgLatency + 'ms';
+
+  makeChart('usageChart', {
+    type: 'line',
+    data: {
+      labels: DATA.daily.map(d => d.date),
+      datasets: [
+        { label:'Input tokens',  data: DATA.daily.map(d=>d.input),  borderColor: PALETTE[0], backgroundColor:'rgba(99,102,241,.08)',  tension:.4, fill:true, pointRadius:3, pointBackgroundColor:PALETTE[0] },
+        { label:'Output tokens', data: DATA.daily.map(d=>d.output), borderColor: PALETTE[1], backgroundColor:'rgba(16,185,129,.08)',  tension:.4, fill:true, pointRadius:3, pointBackgroundColor:PALETTE[1] },
+      ],
+    },
+    options: lightOpts(),
+  });
+
+  makeChart('modelChart', {
+    type: 'bar',
+    data: {
+      labels: DATA.models.map(m=>m.name),
+      datasets: [{ label:'トークン数', data:DATA.models.map(m=>m.tokens), backgroundColor:PALETTE, borderRadius:6, barThickness:16 }],
+    },
+    options: lightOpts({ indexAxis:'y', plugins:{ legend:{display:false} } }),
+  });
+
+  const totalCost0 = DATA.keyUsage.reduce((s,k) => s+k.inputCost+k.outputCost, 0);
+  document.getElementById('key-usage-tbody').innerHTML = DATA.keyUsage.map(k => {
+    const total = k.inputCost + k.outputCost;
+    return `<tr>
+      <td style="font-weight:600;color:#334155">${esc(k.name)}</td>
+      <td class="text-right">${fmt(k.inputTokens)}</td>
+      <td class="text-right" style="color:#6366f1;font-weight:600">${usd(k.inputCost)}</td>
+      <td class="text-right">${fmt(k.outputTokens)}</td>
+      <td class="text-right" style="color:#10b981;font-weight:600">${usd(k.outputCost)}</td>
+      <td class="text-right" style="font-weight:700;color:#1e293b">${usd(total)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── Cost ────────────────────────────────────────────────────────────────────
+function initCost() {
+  makeChart('monthlyChart', {
+    type: 'bar',
+    data: {
+      labels: DATA.monthly.map(m=>m.month),
+      datasets: [{ label:'コスト (USD)', data:DATA.monthly.map(m=>m.cost), backgroundColor:'rgba(99,102,241,.75)', borderColor:PALETTE[0], borderWidth:1, borderRadius:8 }],
+    },
+    options: lightOpts(),
+  });
+
+  makeChart('donutChart', {
+    type: 'doughnut',
+    data: {
+      labels: DATA.models.map(m=>m.name),
+      datasets: [{ data:DATA.models.map(m=>m.cost), backgroundColor:PALETTE, borderWidth:3, borderColor:'#fff', hoverOffset:4 }],
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom', labels:{ color:'#64748b', boxWidth:10, padding:10, font:{size:11} } } }, cutout:'65%' },
+  });
+
+  const totalCost = DATA.keyUsage.reduce((s,k) => s+k.inputCost+k.outputCost, 0);
+  document.getElementById('key-cost-tbody').innerHTML = DATA.keyUsage.map(k => {
+    const total = k.inputCost + k.outputCost;
+    const pct   = Math.round(total / totalCost * 100);
+    return `<tr>
+      <td style="font-weight:600;color:#334155">${esc(k.name)}</td>
+      <td class="text-right">${fmt(k.inputTokens)}</td>
+      <td class="text-right" style="color:#6366f1;font-weight:600">${usd(k.inputCost)}</td>
+      <td class="text-right">${fmt(k.outputTokens)}</td>
+      <td class="text-right" style="color:#10b981;font-weight:600">${usd(k.outputCost)}</td>
+      <td class="text-right" style="font-weight:700;color:#1e293b">${usd(total)}</td>
+      <td class="text-right"><span class="pill violet">${pct}%</span></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('kintone-apps-count').textContent = DATA.kintoneApps.length + ' アプリ';
+  document.getElementById('kintone-apps-tbody').innerHTML = DATA.kintoneApps.map(a => `
+    <tr>
+      <td style="font-weight:600;color:#334155">${esc(a.name)}</td>
+      <td>${esc(a.purpose)}</td>
+      <td class="text-right" style="font-weight:600">${a.records.toLocaleString()}</td>
+      <td><span class="pill slate" style="font-family:monospace">${esc(a.linkedKey)}</span></td>
+      <td>${statusBadge(a.status)}</td>
+    </tr>
+  `).join('');
+}
+
+// ─── API Keys ────────────────────────────────────────────────────────────────
+function initKintone(filter = '') {
+  const q = filter.trim();
+  const filtered = DATA.apiKeys.filter(k => !q || k.name.includes(q) || k.purpose.includes(q) || k.model.includes(q));
+  document.getElementById('keys-count').textContent = filtered.length + ' 件';
+  document.getElementById('keys-tbody').innerHTML = filtered.map(k => `
+    <tr>
+      <td style="font-weight:600;color:#334155">${esc(k.name)}</td>
+      <td>${esc(k.purpose)}</td>
+      <td><span class="pill violet" style="font-family:monospace">${esc(k.model)}</span></td>
+      <td>${esc(k.registered)}</td>
+      <td>${statusBadge(k.status)}</td>
+      <td><button class="detail-btn" data-id="${k.id}" aria-label="${esc(k.name)}の詳細" style="color:#6366f1;font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;padding:4px 10px;border-radius:6px;transition:background .15s">詳細 →</button></td>
+    </tr>
+  `).join('');
+}
+
+// ─── Modal ───────────────────────────────────────────────────────────────────
+let prevFocus = null;
+
+function openModal(id) {
+  const k = DATA.apiKeys.find(k => k.id === id);
+  if (!k) return;
+  prevFocus = document.activeElement;
+  document.getElementById('modal-title').textContent = k.name;
+  const dl = document.getElementById('modal-body');
+  dl.innerHTML = '';
+  [['用途', k.purpose], ['モデル', k.model], ['登録日', k.registered], ['ステータス', k.status === 'active' ? '有効' : '無効'], ['メモ', k.memo]].forEach(([label, val]) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:start;gap:16px;padding:8px 0;border-bottom:1px solid #f1f5f9';
+    const dt = document.createElement('dt'); dt.style.cssText = 'font-size:12px;color:#94a3b8;font-weight:500;white-space:nowrap'; dt.textContent = label;
+    const dd = document.createElement('dd'); dd.style.cssText = 'font-size:13px;color:#1e293b;font-weight:500;text-align:right';   dd.textContent = val;
+    row.append(dt, dd);
+    dl.appendChild(row);
+  });
+  const m = document.getElementById('modal');
+  m.style.display = 'flex';
+  document.getElementById('modal-close').focus();
+}
+
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+  if (prevFocus) prevFocus.focus();
+}
+
+// ─── Tab switching ───────────────────────────────────────────────────────────
+const TABS = ['dashboard','cost','kintone','settings'];
+const PAGE_META = {
+  dashboard: ['ダッシュボード',     '2026年6月 · 利用状況の概要'],
+  cost:      ['コスト分析',         '2026年6月 · 費用の詳細内訳'],
+  kintone:   ['APIキー一覧',        'Kintone 連携データ'],
+  settings:  ['設定',               'Cloud Function・Kintone接続設定'],
+};
+
+function switchTab(tab) {
+  TABS.forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('hidden', t !== tab);
+    const btn = document.getElementById('btn-'+t);
+    const active = t === tab;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', String(active));
+  });
+  document.getElementById('page-title').textContent = PAGE_META[tab][0];
+  document.getElementById('page-sub').textContent   = PAGE_META[tab][1];
+  if (tab === 'dashboard') initDashboard();
+  if (tab === 'cost')      initCost();
+  if (tab === 'kintone')   initKintone(document.getElementById('search-keys').value);
+}
+
+// ─── Boot ────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('last-updated').textContent =
+    new Date().toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) + ' 更新';
+
+  // Load live data from CF (falls back to MOCK if CF URL not configured or request fails)
+  DATA = MOCK;
+  try { await loadFromAPI(); } catch (_) { DATA = MOCK; }
+
+  initDashboard();
+
+  TABS.forEach(t => document.getElementById('btn-'+t).addEventListener('click', () => switchTab(t)));
+
+  document.querySelector('[role="tablist"]').addEventListener('keydown', e => {
+    const cur = TABS.indexOf(document.querySelector('[aria-selected="true"]').id.replace('btn-', ''));
+    if (e.key === 'ArrowDown')  { e.preventDefault(); switchTab(TABS[(cur+1) % TABS.length]); }
+    if (e.key === 'ArrowUp')    { e.preventDefault(); switchTab(TABS[(cur-1+TABS.length) % TABS.length]); }
+  });
+
+  document.getElementById('search-keys').addEventListener('input', e => initKintone(e.target.value));
+
+  document.getElementById('period-btns').addEventListener('click', e => {
+    const btn = e.target.closest('.period-btn');
+    if (!btn) return;
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+
+  document.getElementById('btn-refresh').addEventListener('click', async () => {
+    const cur = document.querySelector('[aria-selected="true"]').id.replace('btn-', '');
+    try { await loadFromAPI(); } catch (_) { DATA = MOCK; }
+    switchTab(cur);
+    document.getElementById('last-updated').textContent =
+      new Date().toLocaleString('ja-JP', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) + ' 更新';
+  });
+
+  document.getElementById('keys-tbody').addEventListener('click', e => {
+    const btn = e.target.closest('.detail-btn');
+    if (btn) openModal(Number(btn.dataset.id));
+  });
+
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('modal').addEventListener('click', e => { if (e.target === document.getElementById('modal')) closeModal(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('modal').style.display === 'flex') closeModal(); });
+
+  document.getElementById('save-settings').addEventListener('click', async () => {
+    localStorage.setItem('cf_url',           document.getElementById('cf-url').value);
+    localStorage.setItem('kintone_subdomain', document.getElementById('kintone-subdomain').value);
+    localStorage.setItem('kintone_appid',    document.getElementById('kintone-appid') ? document.getElementById('kintone-appid').value : '');
+    const btn = document.getElementById('save-settings');
+    btn.textContent = '取得中…';
+    btn.disabled = true;
+    try { await loadFromAPI(); } catch (_) { DATA = MOCK; }
+    const cur = document.querySelector('[aria-selected="true"]')?.id.replace('btn-', '') || 'dashboard';
+    switchTab(cur);
+    btn.textContent = '保存しました ✓';
+    btn.disabled = false;
+    setTimeout(() => { btn.textContent = '設定を保存'; }, 1500);
+  });
+
+  [['cf-url','cf_url'],['kintone-subdomain','kintone_subdomain'],['kintone-appid','kintone_appid']].forEach(([elId, key]) => {
+    const el = document.getElementById(elId);
+    const v  = localStorage.getItem(key);
+    if (el && v) el.value = v;
+  });
+
+  // Mobile sidebar toggle
+  const sidebar  = document.querySelector('.sidebar');
+  const overlay  = document.getElementById('sidebar-overlay');
+  const hamburger = document.getElementById('hamburger');
+
+  function openSidebar() {
+    sidebar.classList.add('open');
+    overlay.classList.remove('hidden');
+    hamburger.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.add('hidden');
+    hamburger.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+  }
+
+  hamburger.addEventListener('click', () =>
+    sidebar.classList.contains('open') ? closeSidebar() : openSidebar()
+  );
+  overlay.addEventListener('click', closeSidebar);
+
+  // Close sidebar on tab switch (mobile)
+  TABS.forEach(t => {
+    document.getElementById('btn-' + t).addEventListener('click', () => {
+      if (window.innerWidth <= 768) closeSidebar();
+    });
+  });
+});
+</script>
+</body>
+</html>
